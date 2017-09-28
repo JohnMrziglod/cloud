@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="RemoteMappingsManager">
+    <list>
+      <list>
+        <remote-mappings server-id="python@ssh://m300472@mistral.dkrz.de:22/sw/rhel6-x64/python/python-3.5.2-gcc49/bin/python3">
+          <settings>
+            <list>
+              <mapping local-root="$PROJECT_DIR$/../.." remote-root="/home/mpim/m300472" />
+            </list>
+          </settings>
+        </remote-mappings>
+      </list>
+    </list>
+  </component>
+</project>
