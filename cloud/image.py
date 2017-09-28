@@ -239,14 +239,14 @@ class ThermoCamImage(Image):
         Returns:
             ThermoCamImage object
         """
-        file = Dataset(filename, "r", format="NETCDF4")
+        fh = Dataset(filename, "r", format="NETCDF4")
 
-        if "times" in file and file["times"] is not None:
-            time = datetime.fromtimestamp(file["times"][0])#, file["times"].units)
-        else:
+        try:
+            time = datetime.fromtimestamp(fh["times"][0])#, file["times"].units)
+        except:
             time = None
 
-        data = file["images"][0][:]
+        data = fh["images"][0][:]
 
         image = cls(data, time)
 
@@ -254,7 +254,7 @@ class ThermoCamImage(Image):
         for name in file.ncattrs():
             image.attr[name] = getattr(file, name)
 
-        file.close()
+        fh.close()
 
         return image
 
