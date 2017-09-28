@@ -310,7 +310,7 @@ class ThermoCamImage(Image):
             for attr, value in self.attr.items():
                 setattr(file, attr, value)
 
-            if self.time is None:
+            if self.time is not None:
                 times = file.createVariable("times", "f8", ("time", ))
                 times.units = "s"
                 times[:] = np.asarray(
