@@ -251,8 +251,8 @@ class ThermoCamImage(Image):
         image = cls(data, time)
 
         # Get attributes:
-        for name in file.ncattrs():
-            image.attr[name] = getattr(file, name)
+        for name in fh.ncattrs():
+            image.attr[name] = getattr(fh, name)
 
         fh.close()
 
