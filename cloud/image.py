@@ -101,6 +101,7 @@ class Image:
         Returns:
             None
         """
+        print("Hllo???", np.sum(~np.isnan(self.data)))
         image = PIL.Image.fromarray(self.data).convert('RGB')
 
         # Create a meta data dictionary for the image

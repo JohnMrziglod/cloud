@@ -128,11 +128,12 @@ def create_calibration_file(calibration_images_path, temperature_file, calibrati
         pixels = np.asarray([temperature_pixel[k] for k in sorted(temperature_pixel)])
         print(pixels, temperatures)
         coeffs, _ = get_calibration(pixels, temperatures)
+        print(coeffs)
 
         # Save the plot of the calibration curve:
         if plot_file is not None:
             import matplotlib.pyplot as plt
-            plt.plot(np.linspace(50, 255), brightness_to_temperature(np.linspace(50, 255), *coeffs), c="g")
+            plt.plot(np.linspace(50, 255), brightness_to_temperature(np.linspace(50, 255), coeffs), c="g")
             plt.hold(True)
             plt.plot(pixels, temperatures)
             plt.ylabel("calibration temperature [°C]")
@@ -232,13 +233,18 @@ class ThermoCamFile(cloud.handlers.FileHandler):
             Either a cloud.image.ThermoCamImage or a cloud.image.Image object.
         """
 
+        print(filename)
+
         # read image
         image = PIL.Image.open(filename, 'r')
 
         # Retrieve the time via EXIF tags
         name2tagnum = dict((name, num) for num, name in TAGS.items())
-        time_string = image._getexif()[name2tagnum["DateTimeOriginal"]]
-        time = datetime.datetime.strptime(time_string, "%Y:%m:%d %H:%M:%S")
+        if image._getexif() is None:
+            time = None
+        else:
+            time_string = image._getexif()[name2tagnum["DateTimeOriginal"]]
+            time = datetime.datetime.strptime(time_string, "%Y:%m:%d %H:%M:%S")
 
         if convert_to_temperatures:
             if self.calibration_coefficients is None:
