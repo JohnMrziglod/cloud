@@ -240,7 +240,12 @@ class ThermoCamImage(Image):
             ThermoCamImage object
         """
         file = Dataset(filename, "r", format="NETCDF4")
-        time = datetime.fromtimestamp(file["times"][0])#, file["times"].units)
+
+        if "times" in file and file["times"] is not None:
+            time = datetime.fromtimestamp(file["times"][0])#, file["times"].units)
+        else:
+            time = None
+
         data = file["images"][0][:]
 
         image = cls(data, time)
@@ -305,11 +310,12 @@ class ThermoCamImage(Image):
             for attr, value in self.attr.items():
                 setattr(file, attr, value)
 
-            times = file.createVariable("times", "f8", ("time", ))
-            times.units = "s"
-            times[:] = np.asarray(
-                [self.time.replace(tzinfo=timezone.utc).timestamp()]
-            )
+            if self.time is None:
+                times = file.createVariable("times", "f8", ("time", ))
+                times.units = "s"
+                times[:] = np.asarray(
+                    [self.time.replace(tzinfo=timezone.utc).timestamp()]
+                )
             try:
                 image_data = self.data.filled()
             except:
