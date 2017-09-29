@@ -81,6 +81,9 @@ class Image:
         h_edges = np.nansum(Image.edge_mask(array, "h"))
         return v_edges + h_edges
 
+    def cut(self, x, y):
+        self.data = self.data[x, y]
+
     @staticmethod
     def edge_mask(array, direction="h"):
         image = array.astype("int")
@@ -183,7 +186,10 @@ class ThermoCamImage(Image):
         return np.nansum(cloud_mask) / np.sum(~np.isnan(cloud_mask))
 
     def cloud_mean_temperature(self, cloud_mask):
-        return np.nanmean(self.data[cloud_mask])
+        if not cloud_mask.any():
+            return np.nan
+
+        return np.nanmean(self.data[cloud_mask].data)
 
     @staticmethod
     def cloud_inhomogeneity(cloud_mask):
@@ -206,7 +212,7 @@ class ThermoCamImage(Image):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            return self.data > clear_sky_temperature
+            return self.data.data > clear_sky_temperature
 
     def cloud_parameters(self, clear_sky_temperature=0):
         """Calculates the cloud parameters of this image.
@@ -330,6 +336,8 @@ class ThermoCamImage(Image):
 
             for param, value in self.cloud_param.items():
                 if param == "mask":
+                    # Do not save the cloud mask!
+                    #continue
                     var = file.createVariable("cloud_"+param, "i1",
                                               ("time", "height", "width"))
                     var.units = "[bool]"

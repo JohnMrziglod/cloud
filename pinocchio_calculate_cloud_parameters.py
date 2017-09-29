@@ -13,6 +13,7 @@ import cloud.handlers.image.pinocchio
 from cloud.image import ThermoCamImage
 from typhon.spareice.datasets import Dataset
 
+
 def calculate_parameters(path, date1, date2,  outfile, clear_sky_temperature):
     # Define where to find the netcdf thermal cam files of Pinocchio:
     pinocchio = Dataset(
@@ -42,6 +43,7 @@ def calculate_parameters(path, date1, date2,  outfile, clear_sky_temperature):
         file.write("time [UTC]\tcoverage [0-1]\tmean temperature [C]\tinhomogeneity \n")
 
         for result in sorted(results, key=lambda x: x[1][0]):
+            print(result)
             time = result[1][0].strftime("%Y %m %d %H %M %S")
             params = result[2]
 

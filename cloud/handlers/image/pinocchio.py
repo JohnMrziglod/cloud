@@ -138,7 +138,7 @@ def create_calibration_file(calibration_images_path, temperature_file, calibrati
             plt.plot(pixels, temperatures)
             plt.ylabel("calibration temperature [°C]")
             plt.xlabel("pixel brightness")
-            plt.title("Pinocchio calibration, 5th September 2017")
+            plt.title("Pinocchio calibration, 25th September 2017")
             plt.grid()
             plt.legend(["T = {:.4f} X**2 + {:.2f} X + {:.2f}".format(*coeffs), "calibration"], loc='upper left')
             plt.savefig(plot_file)

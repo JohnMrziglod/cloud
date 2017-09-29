@@ -62,9 +62,9 @@ def convert(inpath, outpath, date1, date2, calibration_file, mask_file=None):
         # picture here) The mask be True where you want the image pixel to
         # be passed and False where you want to mask it.
         if mask_file is None:
+            print("Create own mask!")
             mask = np.ones((252, 336))
-            mask[230:252, 286:336] = 0
-            mask[0:20, 0:150] = 0
+            mask[0:20, :] = 0
             boolean_mask = mask == 1
 
         # Or we could load one from a file:
@@ -76,6 +76,18 @@ def convert(inpath, outpath, date1, date2, calibration_file, mask_file=None):
             date1, date2, ThermoCamImage.apply_mask,
             method_arguments={
                 "mask" : boolean_mask,
+            },
+            overwrite=True,
+        )
+
+    # Set this to true, if you want to cut off a part of the image.
+    if True:
+        print("Cut off a part of the images...")
+        pinocchio.map_content(
+            date1, date2, ThermoCamImage.cut,
+            method_arguments={
+                "x": slice(20, 252),
+                "y": slice(0, 336),
             },
             overwrite=True,
         )
