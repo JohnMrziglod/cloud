@@ -85,7 +85,6 @@ if __name__ == '__main__':
         args = get_cmd_options()
         date1 = datetime.strptime(args.date1, "%Y-%m-%d_%H")
         date2 = datetime.strptime(args.date2, "%Y-%m-%d_%H")
-        print(args.temperature)
         calculate_parameters(args.path, date1, date2, args.outfile, args.temperature)
     else:
         calculate_parameters(

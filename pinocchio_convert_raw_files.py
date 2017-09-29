@@ -56,7 +56,7 @@ def convert(inpath, outpath, date1, date2, calibration_file, mask_file=None):
 
     # Set this to true, if you want to apply a mask on this images (works only for
     # netcdf files!):
-    if True:
+    if False:
         print("Load the mask...")
         # Either we can create the mask by ourselves here (for a 252x336
         # picture here) The mask be True where you want the image pixel to
