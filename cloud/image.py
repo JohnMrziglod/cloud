@@ -337,7 +337,7 @@ class ThermoCamImage(Image):
             for param, value in self.cloud_param.items():
                 if param == "mask":
                     # Do not save the cloud mask!
-                    #continue
+                    continue
                     var = file.createVariable("cloud_"+param, "i1",
                                               ("time", "height", "width"))
                     var.units = "[bool]"
