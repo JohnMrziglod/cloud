@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-This script calculates the cloud parameters (coverage, inhomgenity, etc.) from
+This script calculates the cloud parameters (coverage, inhomogeneity, etc.) from
 pinocchio netcdf thermal cam images.
 """
 
