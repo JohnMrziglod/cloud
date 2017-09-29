@@ -82,7 +82,16 @@ class Image:
         return v_edges + h_edges
 
     def cut(self, x, y):
-        self.data = self.data[x, y]
+        """Selects a part of the image and cut off the borders.
+
+        Args:
+            x: The columns of the image that you want to keep.
+            y: The rows of the image that you want to keep.
+
+        Returns:
+
+        """
+        self.data = self.data[y, x]
 
     @staticmethod
     def edge_mask(array, direction="h"):
@@ -263,7 +272,7 @@ class ThermoCamImage(Image):
 
         return image
 
-    def to_file(self, filename, fmt="netcdf", cmap="jet"):
+    def to_file(self, filename, fmt="netcdf", cmap=None):
         """ Saves the image to a file. Since it is a matrix of temperature values, the temperature will converted to
         colours according to a color map.
 
@@ -277,8 +286,10 @@ class ThermoCamImage(Image):
         """
 
         if fmt == "png":
-            # The following code is taken from https://stackoverflow.com/a/8598881 and https://stackoverflow.com/a/10552742.
+            if cmap is None:
+                cmap = "jet"
 
+            # The following code is taken from https://stackoverflow.com/a/8598881 and https://stackoverflow.com/a/10552742.
             fig, ax = plt.subplots()
             im = ax.imshow(self.data, cmap=cmap)  # Show the image
             im.set_clim(vmin=-20, vmax=30)

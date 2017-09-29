@@ -233,8 +233,6 @@ class ThermoCamFile(cloud.handlers.FileHandler):
             Either a cloud.image.ThermoCamImage or a cloud.image.Image object.
         """
 
-        print(filename)
-
         # read image
         image = PIL.Image.open(filename, 'r')
 

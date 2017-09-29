@@ -14,7 +14,7 @@ __all__ = [
 
 class ThermoCamImage(cloud.handlers.FileHandler):
 
-    def __init__(self, fmt="netcdf", **kwargs):
+    def __init__(self, fmt="netcdf", cmap=None, **kwargs):
         """ File handler class that can be used to convert thermal cam files and convert them to PNG or netcdf files.
         Note: If you convert them to PNG files, this handler cannot read them. Choose "netcdf" as format if you want to
         process the data.
@@ -41,6 +41,7 @@ class ThermoCamImage(cloud.handlers.FileHandler):
         cloud.handlers.FileHandler.__init__(self, **kwargs)
 
         self.fmt = fmt
+        self.cmap = cmap
 
     def get_info(self, filename):
         info = {}
@@ -62,7 +63,7 @@ class ThermoCamImage(cloud.handlers.FileHandler):
             raise NotImplementedError("No reading support for %s" % self.fmt)
 
     def write(self, filename, data, **kwargs):
-        data.to_file(filename, self.fmt)
+        data.to_file(filename, self.fmt, self.cmap)
 
 
 class WebCamImage(cloud.handlers.FileHandler):

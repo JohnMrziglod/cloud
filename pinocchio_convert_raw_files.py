@@ -80,14 +80,14 @@ def convert(inpath, outpath, date1, date2, calibration_file, mask_file=None):
             overwrite=True,
         )
 
-    # Set this to true, if you want to cut off a part of the image.
+    # Set this to true, if you want to cut off parts of the image.
     if True:
         print("Cut off a part of the images...")
         pinocchio.map_content(
             date1, date2, ThermoCamImage.cut,
             method_arguments={
-                "x": slice(20, 252),
-                "y": slice(0, 336),
+                "y": slice(20, 252),
+                "x": slice(0, 336),
             },
             overwrite=True,
         )
