@@ -187,7 +187,7 @@ class ThermoCamImage(Image):
 
     def cloud_mean_temperature(self, cloud_mask):
         if not cloud_mask.any():
-            return np.nan
+            return 0.0   
 
         return np.nanmean(self.data[cloud_mask].data)
 
@@ -212,7 +212,7 @@ class ThermoCamImage(Image):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            return self.data.data > clear_sky_temperature
+            return self.data > clear_sky_temperature
 
     def cloud_parameters(self, clear_sky_temperature=0):
         """Calculates the cloud parameters of this image.

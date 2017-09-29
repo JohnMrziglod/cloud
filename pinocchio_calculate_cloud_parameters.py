@@ -39,11 +39,10 @@ def calculate_parameters(path, date1, date2,  outfile, clear_sky_temperature):
     )
 
     with open(outfile, "w") as file:
-        template = "{time}\t{coverage:.2f}\t{mean_temperature:.2f}\t{inhomogeneity:.2f}\n"
+        template = "{time}\t{coverage:.5f}\t{mean_temperature:.5f}\t{inhomogeneity:.5f}\n"
         file.write("time [UTC]\tcoverage [0-1]\tmean temperature [C]\tinhomogeneity \n")
 
         for result in sorted(results, key=lambda x: x[1][0]):
-            print(result)
             time = result[1][0].strftime("%Y %m %d %H %M %S")
             params = result[2]
 
