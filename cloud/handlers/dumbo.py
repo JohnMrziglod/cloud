@@ -1,22 +1,22 @@
 import datetime
 
-import cloud.handlers
-from cloud.image import ThermoCamImage
 import numpy as np
+from typhon.spareice.handlers import FileHandler
+
+from cloud.image import ThermoCamImage
 
 __all__ = [
-    "ThermoCamASCIIFile",
+    "ThermoCamASCII",
 ]
 
-class ThermoCamASCIIFile(cloud.handlers.FileHandler):
+
+class ThermoCamASCII(FileHandler):
     """ This class can read thermal cam ASCII files of the Dumbo instrument.
-
-
     """
 
     def __init__(self, **kwargs):
         # Call the base class initializer
-        cloud.handlers.FileHandler.__init__(self, **kwargs)
+        super(ThermoCamASCII, self).__init__(**kwargs)
 
     def get_info(self, filename):
         """ Get info parameters from a file (time coverage, etc).
@@ -40,8 +40,7 @@ class ThermoCamASCIIFile(cloud.handlers.FileHandler):
 
             return info
 
-
-    def read(self, filename, fields=None):
+    def read(self, filename, **kwargs):
         """
         Loads an ASCII file and converts it to np.array.
 

@@ -1,9 +1,8 @@
 import csv
 import datetime
 import glob
-import os
 
-import cloud.handlers
+from typhon.spareice.handlers import FileHandler
 from cloud.image import ThermoCamImage, Image
 import numpy as np
 import PIL.Image
@@ -13,8 +12,8 @@ from scipy.optimize import curve_fit
 
 __all__ = [
     "create_calibration_file",
-    "ThermoCamFile",
-    "WebCamFile"
+    "ThermoCam",
+    "WebCam"
 ]
 
 
@@ -30,7 +29,8 @@ def get_calibration(brightness, temperature):
         temperature:
 
     Returns:
-        A tuple of two elements: calibration coefficients and covariance matrix.
+        A tuple of two elements: calibration coefficients and covariance
+        matrix.
     """
     return curve_fit(polynom_second, brightness, temperature, maxfev=1500)
 
@@ -50,7 +50,7 @@ def brightness_to_temperature(brightness, calibration_coefficients):
 
 def create_calibration_file(calibration_images_path, temperature_file, calibration_file, mask, plot_file=None):
     """ This function creates a calibration file for the pinocchio thermal cam from the calibration images. The created
-    file is in CSV format and can be used as calibration for the cloud.handler.pinocchio.ThermoCamFile() file handler
+    file is in CSV format and can be used as calibration for the cloud.handler.pinocchio.ThermoCam() file handler
     class.
 
     Args:
@@ -92,7 +92,7 @@ def create_calibration_file(calibration_images_path, temperature_file, calibrati
         create_calibration_file("pinocchio/calibration/images/", "temperature_file.csv", "pixel_to_temperature.csv")
 
         # Use it for converting pinocchio images:
-        pinocchio_handler = cloud.handlers.pinocchio.ThermoCamFile(calibration_file="pixel_to_temperature.csv")
+        pinocchio_handler = cloud.handlers.pinocchio.ThermoCam(calibration_file="pixel_to_temperature.csv")
     """
 
     directory_temperature = dict()
@@ -107,7 +107,7 @@ def create_calibration_file(calibration_images_path, temperature_file, calibrati
         for row in reader:
             directory_temperature[row[0]] = float(row[1])
 
-    pinocchio_handler = cloud.handlers.image.pinocchio.ThermoCamFile()
+    pinocchio_handler = cloud.handlers.image.pinocchio.ThermoCam()
 
     temperature_pixel = dict()
 
@@ -171,33 +171,46 @@ def create_calibration_file(calibration_images_path, temperature_file, calibrati
             file.write("{};{}\n".format(pixel, temperature))
 
 
-class ThermoCamFile(cloud.handlers.FileHandler):
+class ThermoCam(FileHandler):
     calibration_coefficients = None
 
-    def __init__(self, calibration_file=None, **kwargs):
+    def __init__(self, calibration_file=None, convert_to_temperatures=True,
+                 **kwargs):
         """ This class can read thermal cam images of the Pinocchio instrument.
 
         Args:
-            calibration_file: Name of the calibration file in CSV format. The file should contain two columns which are
-                separated by semicolon. The first denotes the pixel value (between 0 and 255) and the second denotes the
-                corresponding temperature. This reader will fit a curve to those calibration values and convert all
-                pixels of a thermo cam image according to it.
+            calibration_file: Name of the calibration file in CSV format. The
+                file should contain two columns which are separated by
+                semicolon. The first denotes the pixel value (between 0 and
+                255) and the second denotes the corresponding temperature. This
+                reader will fit a curve to those calibration values and convert
+                all pixels of a thermal cam image according to it.
             **kwargs:
         """
         # Call the base class initializer
-        cloud.handlers.FileHandler.__init__(self, **kwargs)
+        super(ThermoCam, self).__init__(**kwargs)
+
+        self.convert_to_temperatures = convert_to_temperatures
+
+        if self.convert_to_temperatures and calibration_file is None:
+                raise ValueError(
+                    "For converting to temperatures a calibration file is "
+                    "needed! Look at the documentation of the parameter "
+                    "calibration_file for more information.")
 
         if calibration_file is not None:
-            # Load the calibration data and calculate the pixel_to_temperature function:
+            # Load the calibration data and calculate the pixel_to_temperature
+            # function:
             data = np.genfromtxt(
                 calibration_file,
                 delimiter=';',
                 dtype=None,
                 skip_header=1
             )
-            ThermoCamFile.calibration_coefficients, _ = get_calibration(data[:, 0], data[:, 1])
+            ThermoCam.calibration_coefficients, _ = \
+                get_calibration(data[:, 0], data[:, 1])
 
-    def get_info(self, filename):
+    def get_info(self, filename, **kwargs):
         """
         Sollte mit EXIF Daten funktionieren, das kann man mit PIL machen:
         https://stackoverflow.com/questions/4764932/in-python-how-do-i-read-the-exif-data-for-an-image
@@ -222,7 +235,7 @@ class ThermoCamFile(cloud.handlers.FileHandler):
 
         return info
 
-    def read(self, filename, fields=None, convert_to_temperatures=True):
+    def read(self, filename, **kwargs):
         """
         Reads an image and converts it to np.array.
 
@@ -244,33 +257,35 @@ class ThermoCamFile(cloud.handlers.FileHandler):
             time_string = image._getexif()[name2tagnum["DateTimeOriginal"]]
             time = datetime.datetime.strptime(time_string, "%Y:%m:%d %H:%M:%S")
 
-        if convert_to_temperatures:
-            if self.calibration_coefficients is None:
-                raise ValueError("For converting to temperatures a calibration file is needed! Look at the "
-                                 "documentation of the parameter calibration_file for more information.")
+        if self.convert_to_temperatures:
             # convert it to a grey scale image
             data = np.float32(np.array(image.convert('L')))
-            data = brightness_to_temperature(data, self.calibration_coefficients)
-            return ThermoCamImage(data, time)
+            data = brightness_to_temperature(
+                data, self.calibration_coefficients)
+            img = ThermoCamImage(data, time)
         else:
             data = np.float32(np.array(image.convert('RGB')))
-            return Image(data, time)
+            img = Image(data, time)
+
+        # Pinocchio thermal cams put border of one pixel width at the left and
+        # top side. -> We cover this with the image mask:
+        # img.cut(0, 0)
+        return img
 
         # black pixels = NaN
         # data[data == 0] = np.nan
 
 
-class WebCamFile(cloud.handlers.FileHandler):
+class WebCam(FileHandler):
     """ This class can read web cam images of the Pinocchio instrument.
 
 
     """
 
     def __init__(self, **kwargs):
-        self.wichtig = True
 
         # Call the base class initializer
-        cloud.handlers.FileHandler.__init__(self, **kwargs)
+        super(WebCam, self).__init__(**kwargs)
 
     def get_info(self, filename):
         """
@@ -283,8 +298,7 @@ class WebCamFile(cloud.handlers.FileHandler):
         """
         pass
 
-
-    def read(self, filename, fields=None):
+    def read(self, filename):
         """
         Reads an image and converts it to np.array.
 
@@ -309,11 +323,11 @@ class WebCamFile(cloud.handlers.FileHandler):
         return Image(data)
 
 
-class WebCamFishEyeFile(WebCamFile):
+class WebCamFishEye(WebCam):
     def __init__(self, **kwargs):
-        super(WebCamFishEyeFile, self).__init__(**kwargs)
+        super(WebCamFishEye, self).__init__(**kwargs)
 
-    def read(self, filename, fields=None):
-        image = super(WebCamFishEyeFile, self).read(filename)
+    def read(self, filename):
+        image = super(WebCamFishEye, self).read(filename)
 
         #image.distortion()

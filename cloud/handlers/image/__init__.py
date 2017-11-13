@@ -30,7 +30,7 @@ class ThermoCamImage(cloud.handlers.FileHandler):
             from cloud.handlers.image import ThermoCamImage
             import cloud.handlers.image.pinocchio as pinocchio
 
-            pinocchio_fh = pinocchio.ThermoCamFile("path/to/calibration_file.csv")
+            pinocchio_fh = pinocchio.ThermoCam("path/to/calibration_file.csv")
             image = pinocchio_fh.read("pinocchio_image.jpg")
 
             thermocam_fh = ThermoCamImage(fmt="png")

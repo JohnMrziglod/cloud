@@ -2,15 +2,23 @@ from datetime import datetime, timezone
 import io
 import warnings
 
-from netCDF4 import Dataset, num2date, date2num
+from netCDF4 import Dataset
 import numpy as np
 import PIL.Image
 import PIL.PngImagePlugin
 import matplotlib.pyplot as plt
 
 
-def load_mask(self, filename: str):
-    """ Loads a mask file and returns it as a numpy array where the masked values are False.
+__all__ = [
+    "load_mask",
+    "Image",
+    "ThermoCamImage",
+]
+
+
+def load_mask(filename):
+    """Loads a mask file and returns it as a numpy array where the masked
+    values are False.
 
     This method can handle ASCII or PNG files as masks.
 
@@ -27,10 +35,11 @@ def load_mask(self, filename: str):
     mask = None
     if filename.endswith(".png"):
         # read image
-        image = Image.open(filename, 'r')
+        image = PIL.Image.open(filename, 'r')
 
         # convert it to a grey scale image
         mask = np.float32(np.array(image.convert('L')))
+        mask = mask == 255
     elif filename.endswith(".txt"):
         # Count the number of columns in that mask file.
         with open(filename, "r") as f:
@@ -43,9 +52,9 @@ def load_mask(self, filename: str):
             usecols=list(range(1, num_columns))
         )
 
-    mask = mask.astype("int")
+        mask = mask == 1
 
-    return mask == 1
+    return mask
 
 
 class Image:
@@ -63,17 +72,18 @@ class Image:
         self.time = time
 
     def apply_mask(self, mask):
-        """ Apply mask on data.
+        """ Applies a mask on this image.
 
         Args:
-            mask: A numpy.array of boolean values. All indices where this mask is false, the pixels of the image will be
-                covered.
+            mask: A numpy.array of boolean values. Where this mask
+                is false the pixels of the image will be covered.
 
         Returns:
             None
         """
 
-        self.data[~mask] = np.nan #np.ma.masked_where(~mask, self.data)
+        # self.data = np.ma.masked_where(~mask, self.data)
+        self.data[~mask] = np.nan
 
     @staticmethod
     def count_edges(array):
@@ -82,16 +92,23 @@ class Image:
         return v_edges + h_edges
 
     def cut(self, x, y):
-        """Selects a part of the image and cut off the borders.
+        """Selects a part of the image that should be cut off.
 
         Args:
-            x: The columns of the image that you want to keep.
-            y: The rows of the image that you want to keep.
+            x: The columns of the image that you want to cut off.
+            y: The rows of the image that you want to cut off.
 
         Returns:
+            None
 
+        Examples:
+            # Delete one pixel row from the left and top border.
+            >> image.cut(0, 0)
         """
-        self.data = self.data[y, x]
+
+        self.data = np.delete(self.data, x, 0)
+        self.data = np.delete(self.data, y, 1)
+        return self.data
 
     @staticmethod
     def edge_mask(array, direction="h"):
@@ -102,6 +119,10 @@ class Image:
             return image[:, :-1] + image[:, 1:] == 0
         else:
             return image[:-1, :] + image[1:, :] == 0
+
+    @property
+    def height(self):
+        return self.data.shape[1]
 
     def save(self, filename, **kwargs):
         """ Saves the image to a file.
@@ -145,17 +166,15 @@ class Image:
            A numpy.array of normalized data.
         """
 
-        self.data = 255 * (self.data + np.abs(np.nanmin(self.data))) / (np.nanmax(self.data)
-                                                                            + np.abs(np.nanmin(self.data)))
+        self.data = 255 * (self.data + np.abs(np.nanmin(self.data))) / (
+            np.nanmax(self.data) + np.abs(np.nanmin(self.data)))
 
     def to_brightness(self):
-        """ Converts all pixels of this image to brightness values between 0 and 255.
-
-        Args:
-           data: A two-dimensional numpy.array containing image data
+        """ Converts all pixels of this image to brightness values between 0
+        and 255.
 
         Returns:
-           A numpy.array of normalized data.
+           None
         """
 
         if len(self.data.shape) == 3:
@@ -165,10 +184,15 @@ class Image:
         image = PIL.Image.fromarray(self.data)
         image.show()
 
+    @property
+    def width(self):
+        return self.data.shape[0]
+
 
 class ThermoCamImage(Image):
     def __init__(self, *args, **kwargs):
-        """ A specialised image class that handles thermal cam images (matrizes of temperatures).
+        """ A specialised image class that handles thermal cam images (matrices
+        of temperatures).
 
         Args:
             *args: Positonal arguments of the base class Image.
@@ -182,12 +206,31 @@ class ThermoCamImage(Image):
 
         self._temperature_range = (0, 0)
 
+    def cloud_base_temperature(self, cloud_mask):
+        """Calculates the cloud base temperature of this image.
+
+        This is simply the cloud pixel with the highest temperature.
+
+        Args:
+            cloud_mask: Matrix with boolean values for each pixel. True means
+                cloud, False means non-cloud.
+
+        Returns:
+            The lowest temperature of all cloud pixels. If there is no cloud,
+            NaN will be returned.
+        """
+        if cloud_mask.any():
+            return np.nanmax(self.data[cloud_mask])
+        else:
+            return np.nan
+
     @staticmethod
     def cloud_coverage(cloud_mask):
         """Calculates the cloud coverage of this image.
 
         Args:
-            cloud_mask: Matrix with boolean values for each pixel. True means cloud, False means non-cloud.
+            cloud_mask: Matrix with boolean values for each pixel. True means
+            cloud, False means non-cloud.
 
         Returns:
             A float between 0 and 1.
@@ -208,12 +251,52 @@ class ThermoCamImage(Image):
         # 10 is an arbitrary scaling parameter
         return 10 * Image.count_edges(cloud_mask) / size
 
-    def cloud_mask(self, clear_sky_temperature):
+    def cloud_level_mask(self, t_surface, lapse_rate=None):
+        """Classifies each pixel according to its temperature to a height
+        level.
+
+        The levels are:
+            Up to 2000m: Low clouds - class 1.
+            2000m - 6000m: Middle high clouds - class 2.
+            6000m - 10000m: Middle high clouds - class 3.
+            No cloud - class 0.
+
+        Args:
+            t_surface: Temperature of the surface / near surface.
+            lapse_rate: Temperature descent gradient per 1 km. Default is
+                -4K/km.
+
+        Returns:
+            Matrix with classes for each pixel.
+        """
+        if lapse_rate is None:
+            # The standard wet atmosphere lapse rate:
+            lapse_rate = -4.
+
+        # Temperatures for each level
+        level_temps = t_surface + lapse_rate * np.array([2, 6, 10])
+
+        level_mask = np.zeros_like(self.data)
+        # Low clouds
+        level_mask[self.data > level_temps[0]] = 1
+        # Middle high clouds
+        level_mask[
+            (level_temps[0] > self.data) &
+            (self.data > level_temps[1])] = 2
+        # High clouds
+        level_mask[
+            (level_temps[1] > self.data) &
+            (self.data > level_temps[2])] = 3
+
+        return level_mask
+
+    def cloud_mask(self, min_temperature, max_temperature=None):
         """Creates a cloud mask (boolean matrix) of this image.
 
         Args:
-            clear_sky_temperature: Temperature of the clear sky that will be used as threshold to decide between cloud
-                and non-cloud.
+            min_temperature: Temperature of the clear sky that will be
+                used as threshold to decide between cloud and non-cloud.
+            max_temperature:
 
         Returns:
             A 2-dimensional numpy.array.
@@ -221,46 +304,78 @@ class ThermoCamImage(Image):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            return self.data > clear_sky_temperature
+            if max_temperature is None:
+                return self.data > min_temperature
 
-    def cloud_parameters(self, clear_sky_temperature=0):
+            return (self.data > min_temperature) & \
+                   (self.data < max_temperature)
+
+    def cloud_parameters(self, temperatures=None):
         """Calculates the cloud parameters of this image.
 
         Args:
-            clear_sky_temperature: Temperature of the clear sky that will be used as threshold to decide between cloud
-                and non-cloud.
+            temperatures: Temperature of the clear sky that will be
+                used as threshold to decide between cloud and non-cloud. Can be
+                either one number or a list of numbers. Default is 0.
 
         Returns:
-            A dictionary with the values for the different parameters (coverage, inhomogeneity, etc.)
+            A dictionary with the values for the different parameters (
+            coverage, inhomogeneity, etc.)
         """
-        cloud_mask = self.cloud_mask(clear_sky_temperature)
 
-        # Calculate the coverage parameters:
-        self.cloud_param["coverage"] = self.cloud_coverage(cloud_mask)
-        self.cloud_param["mean_temperature"] = self.cloud_mean_temperature(cloud_mask)
-        self.cloud_param["inhomogeneity"] = self.cloud_inhomogeneity(cloud_mask)
-        self.cloud_param["mask"] = cloud_mask
+        if temperatures is None:
+            temperatures = [0, ]
+        elif isinstance(temperatures, (int, float)):
+            temperatures = [temperatures]
+
+        self.cloud_param = {
+            "coverage": [],
+            "mean_temperature": [],
+            "inhomogeneity": [],
+            "base_temperature": [],
+            #"mask": []
+        }
+
+        # 3.2, -11.8, -28.8
+        for i, temperature in enumerate(temperatures):
+            if i == 0:
+                cloud_mask = self.cloud_mask(temperature, None)
+            else:
+                cloud_mask = self.cloud_mask(temperature, temperatures[i-1])
+
+            # Calculate the coverage parameters:
+            self.cloud_param["coverage"].append(
+                self.cloud_coverage(cloud_mask))
+            self.cloud_param["mean_temperature"].append(
+                self.cloud_mean_temperature(cloud_mask))
+            self.cloud_param["inhomogeneity"].append(
+                self.cloud_inhomogeneity(cloud_mask))
+            self.cloud_param["base_temperature"].append(
+                self.cloud_base_temperature(cloud_mask))
+            # self.cloud_param["mask"].append(cloud_mask)
 
         return self.cloud_param
 
     @classmethod
-    def from_file(cls, filename):
+    def from_netcdf(cls, filename):
         """Reads a thermal cam image from a netcdf file.
 
         Args:
             filename: Path and name of the file.
 
         Returns:
-            ThermoCamImage object
+            A ThermoCamImage object
         """
         fh = Dataset(filename, "r", format="NETCDF4")
 
         try:
-            time = datetime.fromtimestamp(fh["times"][0])#, file["times"].units)
+            time = datetime.fromtimestamp(fh["times"][0])
         except:
             time = None
 
-        data = fh["images"][0][:]
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            data = fh["temperatures"][0][:]
 
         image = cls(data, time)
 
@@ -272,95 +387,109 @@ class ThermoCamImage(Image):
 
         return image
 
-    def to_file(self, filename, fmt="netcdf", cmap=None):
-        """ Saves the image to a file. Since it is a matrix of temperature values, the temperature will converted to
-        colours according to a color map.
+    def to_netcdf(self, filename, save_cloud_mask=True):
+        """ Saves the image to a netcdf file. Since it is a matrix of
+        temperature values, the temperature will converted to colours according
+        to a color map.
 
         Args:
             filename: File to which the image should be saved.
-            fmt: Format of the files. Can be either "netcdf" or "png". Default is "netcdf".
-            cmap: The colormap that should be used when saving as PNG file.
+            save_cloud_mask: Save cloud mask in netcdf file.
 
         Returns:
             None
         """
 
-        if fmt == "png":
-            if cmap is None:
-                cmap = "jet"
+        file = Dataset(filename, "w", format="NETCDF4")
+        time = file.createDimension("time", None)
 
-            # The following code is taken from https://stackoverflow.com/a/8598881 and https://stackoverflow.com/a/10552742.
-            fig, ax = plt.subplots()
-            im = ax.imshow(self.data, cmap=cmap)  # Show the image
-            im.set_clim(vmin=-20, vmax=30)
-            # pos = plt.axes([0.93, 0.1, 0.02, 0.35])  # Set colorbar position in fig
-            cbar = fig.colorbar(im, )  # Create the colorbar
-            cbar.set_label('Temperature [°C]')
-            buf = io.BytesIO()
-            fig.savefig(buf, format='png')
-            plt.close(fig)
+        for attr, value in self.attr.items():
+            setattr(file, attr, value)
 
-            buf.seek(0)
-            image = PIL.Image.open(buf)
+        if self.time is not None:
+            times = file.createVariable("times", "f8", ("time", ))
+            times.units = "s"
+            times[:] = np.asarray(
+                [self.time.replace(tzinfo=timezone.utc).timestamp()]
+            )
 
-            # Create a meta data dictionary for the image
-            meta = PIL.PngImagePlugin.PngInfo()
+        try:
+            image_data = self.data.filled()
+        except:
+            image_data = self.data
 
-            # Add the minimum and maximum temperature in the picture:
-            meta.add_text("min_temperature", str(-20))
-            meta.add_text("max_temperature", str(30))
+        height = file.createDimension("height", image_data.shape[0])
+        width = file.createDimension("width", image_data.shape[1])
+        temperatures = file.createVariable("temperatures", "f8",
+                                     ("time", "height", "width"))
+        temperatures.missing_value = np.nan
+        temperatures.units = "°C"
+        temperatures[:] = np.array([image_data])
 
-            if self.time is not None:
-                # Save the time tag in the image (as metadata)
-                meta.add_text("time", self.time.strftime("%Y-%m-%d %H:%M:%S"))
-            for attr, value in self.attr.items():
-                meta.add_text(attr, value)
-
-            # Save the image
-            image.save(filename, "png", pnginfo=meta)
-            buf.close()
-        elif fmt == "netcdf":
-            file = Dataset(filename, "w", format="NETCDF4")
-            time = file.createDimension("time", None)
-
-            for attr, value in self.attr.items():
-                setattr(file, attr, value)
-
-            if self.time is not None:
-                times = file.createVariable("times", "f8", ("time", ))
-                times.units = "s"
-                times[:] = np.asarray(
-                    [self.time.replace(tzinfo=timezone.utc).timestamp()]
-                )
-            try:
-                image_data = self.data.filled()
-            except:
-                image_data = self.data
-
-            height = file.createDimension("height", image_data.shape[0])
-            width = file.createDimension("width", image_data.shape[1])
-            images = file.createVariable("images", "f8",
-                                         ("time", "height", "width"))
-            images.missing_value = np.nan
-            images.units = "°C"
-            images[:] = np.array([image_data])
-
-            for param, value in self.cloud_param.items():
-                if param == "mask":
-                    # Do not save the cloud mask!
-                    continue
-                    var = file.createVariable("cloud_"+param, "i1",
-                                              ("time", "height", "width"))
-                    var.units = "[bool]"
-                    var.description = "True where a cloud is."
-                    var[:] = np.array([value])
-                    continue
-
-                var = file.createVariable("cloud_" + param, "f8", ("time",))
-                var.units = "[0-1]"
+        for param, value in self.cloud_param.items():
+            if param == "mask" and save_cloud_mask:
+                var = file.createVariable("cloud_"+param, "i1",
+                                          ("time", "height", "width"))
+                var.units = "[bool]"
+                var.description = "True where a cloud is."
                 var[:] = np.array([value])
+                continue
 
-            file.close()
+            var = file.createVariable("cloud_" + param, "f8", ("time",))
+            var.units = "[0-1]"
+            var[:] = np.array([value])
+
+        file.close()
+
+    def to_png(self, filename, cmap=None):
+        """Saves the image to a file. Since it is a matrix of temperature
+        values, the temperature will converted to colours according to a color
+        map.
+
+        Args:
+            filename: File to which the image should be saved.
+            cmap: The colormap that should be used. Default is jet.
+
+        Returns:
+            None
+        """
+
+        if cmap is None:
+            cmap = "jet"
+
+        # The following code is taken from
+        # https://stackoverflow.com/a/8598881 and
+        # https://stackoverflow.com/a/10552742.
+        fig, ax = plt.subplots()
+        im = ax.imshow(self.data, cmap=cmap)  # Show the image
+        im.set_clim(vmin=-20, vmax=30)
+        # pos = plt.axes([0.93, 0.1, 0.02, 0.35])  # Set colorbar position
+        # in fig
+        cbar = fig.colorbar(im, )  # Create the colorbar
+        cbar.set_label('Temperature [°C]')
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png')
+        plt.close(fig)
+
+        buf.seek(0)
+        image = PIL.Image.open(buf)
+
+        # Create a meta data dictionary for the image
+        meta = PIL.PngImagePlugin.PngInfo()
+
+        # Add the minimum and maximum temperature in the picture:
+        meta.add_text("min_temperature", str(-20))
+        meta.add_text("max_temperature", str(30))
+
+        if self.time is not None:
+            # Save the time tag in the image (as metadata)
+            meta.add_text("time", self.time.strftime("%Y-%m-%d %H:%M:%S"))
+        for attr, value in self.attr.items():
+            meta.add_text(attr, value)
+
+        # Save the image
+        image.save(filename, "png", pnginfo=meta)
+        buf.close()
 
     @property
     def temperature_range(self):

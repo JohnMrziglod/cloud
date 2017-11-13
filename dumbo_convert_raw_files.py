@@ -6,16 +6,16 @@ This script renames the ASCII files of the dumbo thermal cam  and converts them 
 
 from datetime import datetime
 
-import cloud.handlers.image
-import cloud.handlers.image.dumbo
-
 from typhon.spareice.datasets import Dataset
+
+import cloud.handlers.dumbo
+import cloud.handlers.image
 
 # Define where to find the original thermal cam files of Dumbo:
 dumbo_original = Dataset(
     "dumbo.thermo_cam",
     files="/home/mpim/m300472/work/data/dumbo/original/{year}{month}{day}ASC/*.asc.bz2",
-    handler=cloud.handlers.image.dumbo.ThermoCamASCIIFile(),
+    handler=cloud.handlers.dumbo.ThermoCamASCIIFile(),
     time_coverage_retrieving_method="content",
     times_cache="dumbo_times.json"
 )
