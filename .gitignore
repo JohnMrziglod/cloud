@@ -1,5 +1,7 @@
-doc/_build/*
-.idea/*
-__pycache__/*
-.fuse_hidden0000296600000001
-
+*.pyc
+*.swp
+.idea
+.DS_Store
+doc/_build
+doc/generated
+typhon.egg-info

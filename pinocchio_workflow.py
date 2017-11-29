@@ -26,7 +26,7 @@ from cloud.image import load_mask, ThermoCamImage
 
 # JUST CHANGE THOSE LINES --
 date1 = datetime(2017, 11, 2)
-date2 = datetime(2017, 11, 5, 23)
+date2 = datetime(2017, 11, 11, 23)
 
 temperatures = [3.2, -12.8, -28.8]
 # -- UNTIL HERE
@@ -42,7 +42,7 @@ stats_dir = data_dir + "cloud_stats/pinocchio004/{year}{month}" \
     "{day}-{end_year}{end_month}{end_day}.nc"
 
 # Set this to true if you need to extract the archive and convert the raw files
-if True:
+if False:
     for date in pd.date_range(date1, date2):
         archive_filename = \
             "{basedir}/t{date}.tgz".format(
@@ -119,14 +119,9 @@ if True:
         )
 
     # Load the dship data:
-    dship_dataset = Dataset(
-        data_dir + "dship/atmosphere/{year}{month}{day}_{hour}{minute}{second}-"
-                   "{end_year}{end_month}{end_day}_{end_hour}{end_minute}"
-                   "{end_second}",
-        handler=ShipMSM(),
-        name="DSHIP",
-    )
-    dship = dship_dataset.accumulate(date1, date2)
+    dship_fh = ShipMSM()
+    dship = \
+        dship_fh.read(data_dir + "DSHIP/cruise_data_20171102-20171113.txt")
     dship = dship[dship["air_temperature"] < 99]
     dship = dship[dship["air_pressure"] > 500]
 

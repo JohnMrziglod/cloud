@@ -7,10 +7,10 @@ Simply checkout clone this branch to your local computer by using this command:
 
     git clone https://github.com/JohnMrziglod/cloud.git
 
-Additionally, you will need the spareice_development branch by typhon (a python
-module for atmospheric physics):
+Additionally, you will need the typhon package (a python module for atmospheric
+physics):
 
-    git clone -b spareice_development https://github.com/JohnMrziglod/typhon.git
+    git clone ttps://github.com/atmtools/typhon.git
     cd typhon
     pip install --user --editable .
     
@@ -22,9 +22,9 @@ You can update the cloud toolkit (or typhon) by running this command in the
     
 ## Usage
 This cloud toolkit contains several scripts:
-*   **pinocchio_convert_raw_files.py**: Opens the raw files of the Pinocchio 
+*   **pinocchio_workflow.py**: Opens the raw files of the Pinocchio
 thermal cam, converts them either to PNG images or netcdf files and apply a 
-image mask.
-*   **pinocchio_calculate_cloud_parameters.py**: Calculates the cloud 
-parameters (coverage, inhomogeneity, etc.) from pinocchio netcdf thermal cam 
-images.
+image mask. Then calculates the cloud parameters (coverage, inhomogeneity,
+etc.) from pinocchio netcdf thermal cam images.
+*   **monitor.py**: Displays the data from all selected sources and creates
+plots.

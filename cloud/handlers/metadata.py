@@ -17,7 +17,7 @@ class ShipMSM(CSV):
         super(ShipMSM, self).__init__(
             delimiter="\t",
             header=1,
-            skip_header=4
+            skip_header=1
         )
 
     def read(self, filename, fields=None):
