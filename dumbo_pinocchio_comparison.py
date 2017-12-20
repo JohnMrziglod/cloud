@@ -6,28 +6,49 @@ This script compares the brightness temperatures measured by Dumbo and Pinocchio
 
 from datetime import datetime
 
+import matplotlib.pyplot as plt
+import numpy as np
 from typhon.spareice.datasets import Dataset
-import cloud.handlers.image
+from typhon.spareice.handlers.common import NetCDF4
 
-# Add thermal cam files of Dumbo
+
+def plot(ax, date1, date2, dataset):
+    data = dataset.accumulate(date1, date2)
+    data = data[(data["time"] > date1) & (data["time"] < date2)]
+    indices = data["time"].argsort()
+    time = data["time"][indices][1::6]
+    ax.plot(
+        time,
+        np.sum(data["coverage"][indices], axis=1).average(6))
+    # ax.scatter(time, data["coverage"][:, 0].average(6), s=1, alpha=0.5)
+    # ax.scatter(time, data["coverage"][:, 1].average(6), s=1, alpha=0.5,
+    #             c="r")
+    # ax.scatter(time, data["coverage"][:, 2].average(6), s=1, alpha=0.5,
+    #             c="k")
+    ax.legend(["Low", "Middle", "High"])
+    ax.set_ylabel("Cloud coverage")
+
+
+data_dir = "/Users/jm.mac.mobil/Data/MSM68-2/cloud_stats/"
+
+# Add stat files of Dumbo
 dumbo = Dataset(
-    "dumbo.thermo_cam",
-    files="/home/mpim/m300472/work/data/dumbo/netcdf/{year}{month}{day}/{hour}/{hour}{minute}{second}.nc",
-    handler=cloud.handlers.image.ThermoCamImage(),
-    times_cache="dumbo_times.json",
+    data_dir + "Dumbo/20171105-20171106.nc",
+    handler=NetCDF4(),
 )
 
-# Add thermal cam files of Pinocchio
+# Add stat files of Pinocchio
 pinocchio = Dataset(
-    "pinocchio.thermo_cam",
-    files="/home/mpim/m300472/work/data/pinocchio/netcdf/{year}{month}{day}/{hour}/tm{hour}{minute}{second}.nc",
-    handler=cloud.handlers.image.ThermoCamImage(),
-    times_cache="pinocchio_times.json",
+    data_dir + "Pinocchio004/20171102-20171111.nc",
+    handler=NetCDF4(),
 )
 
-# Find the corresponding files to Dumbo from Pinocchio
-date1 = datetime(2017, 7, 5)
-date2 = datetime(2017, 7, 6)
-for primaries, secondaries in dumbo.find_overlapping_files(date1, date2, pinocchio):
-    print("Dumbo:", primaries)
-    print("Pinocchio:", secondaries)
+date1 = datetime(2017, 11, 5)
+date2 = datetime(2017, 11, 6)
+
+fig, ax = plt.subplots()
+plot(ax, date1, date2, dumbo)
+plot(ax, date1, date2, pinocchio)
+plt.title("Total Cloud Coverage")
+plt.legend(["Dumbo", "Pinocchio"])
+plt.show()

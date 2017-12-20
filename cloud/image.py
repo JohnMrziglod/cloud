@@ -134,7 +134,7 @@ class Image:
         Returns:
             None
         """
-        image = PIL.Image.fromarray(self.data).convert('RGB')
+        image = PIL.Image.fromarray(self.data)#.convert('RGB')
 
         # Create a meta data dictionary for the image
         meta = PIL.PngImagePlugin.PngInfo()

@@ -152,11 +152,18 @@ if True:
     data["time"] = [r[1][0] for r in sorted_results]
     print(data["time"])
 
-    params = ["coverage", "mean_temperature", "base_temperature", "inhomogeneity"]
+    params = ["coverage", "mean_temperature", "max_temperature",
+              "min_temperature", "base_temperature",
+              "inhomogeneity", ]
     for param in params:
-        data[param] = Array(
-            [r[2][param] for r in sorted_results], dims=["time", "level"]
-        )
+        if param.startswith("max_") or param.startswith("min_"):
+            data[param] = Array(
+                [r[2][param] for r in sorted_results], dims=["time", ]
+            )
+        else:
+            data[param] = Array(
+                [r[2][param] for r in sorted_results], dims=["time", "level"]
+            )
 
     # Write the data to this dataset:
     param_dataset = Dataset(stats_dir, handler=NetCDF4())

@@ -5,40 +5,46 @@ This script monitors all measurements of a cruise including dship data,
 pinocchio, dumbo and ceilometer measurements.
 """
 
+from configparser import ConfigParser
 from datetime import datetime
+import os.path
 
 import matplotlib.pyplot as plt
 from typhon.spareice.datasets import Dataset, DatasetManager
 from typhon.spareice.handlers.common import NetCDF4
+from typhon.spareice.handlers import FileHandler
 
 from cloud.handlers.metadata import ShipMSM
 
 
-def define_datasets(data_dir):
+def define_datasets(config):
+    basedir = config["General"]["basedir"]
+
     # Define all needed datasets:
     dataset = DatasetManager()
     dataset += Dataset(
-        data_dir + "cloud_stats/Pinocchio004/{year}{month}"
-                   "{day}-{end_year}{end_month}{end_day}.nc",
+        os.path.join(basedir, config["Pinocchio"]["stats"]),
         handler=NetCDF4(),
         name="Pinocchio",
     )
     dataset += Dataset(
-        data_dir + "cloud_stats/Dumbo/{year}{month}"
-                   "{day}-{end_year}{end_month}{end_day}.nc",
+        os.path.join(basedir, config["Dumbo"]["stats"]),
         handler=NetCDF4(),
         name="Dumbo",
     )
     dataset += Dataset(
-        data_dir + "Ceilometer/data/"
-                   "{year}{month}{day}_FS_MERIAN_CHM090102.nc",
+        os.path.join(basedir, config["Ceilometer"]["files"]),
         handler=NetCDF4(),
         name="Ceilometer",
     )
     dataset += Dataset(
-        data_dir + "DSHIP/cruise_data_20171102-20171113.txt",
+        os.path.join(basedir, config["DShip"]["files"]),
         handler=ShipMSM(),
         name="DSHIP",
+    )
+    dataset += Dataset(
+        os.path.join(basedir, config["Plots"]["overview"]),
+        name="plot-overview",
     )
 
     return dataset
@@ -113,10 +119,12 @@ def plot_ceilometer(ax, date1, date2, dataset):
 date1 = "2017-11-02"
 date2 = "2017-11-13"
 
-# The base dir of all data:
-data_dir = "/Users/jm.mac.mobil/Data/MSM68-2/"
+# Import the configuration file:
+config = ConfigParser()
+config.read("config.ini")
 
-dataset = define_datasets(data_dir)
+# The base dir of all data:
+dataset = define_datasets(config)
 
 plots = [
     plot_temperature,
@@ -157,4 +165,7 @@ plt.xlim([
     Dataset._to_datetime(date2),
 ])
 
-plt.show()
+path = dataset["plot-overview"].generate_filename(
+    dataset["plot-overview"].files, date1, date2)
+os.makedirs(os.path.dirname(path), exist_ok=True)
+plt.savefig(path)

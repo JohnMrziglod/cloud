@@ -3,7 +3,7 @@ These scripts are for handling cloud image data from the Pinocchio and Dumbo
 cameras.
 
 ## Installation
-Simply checkout clone this branch to your local computer by using this command:
+Simply clone this branch to your local computer by using this command:
 
     git clone https://github.com/JohnMrziglod/cloud.git
 
@@ -13,6 +13,18 @@ physics):
     git clone ttps://github.com/atmtools/typhon.git
     cd typhon
     pip install --user --editable .
+    
+and you will need other python packages:
+* numpy
+* scipy
+* matplotlib
+* Pillow
+* netcdf4
+
+You can install them via:
+
+    ﻿pip3 install --user numpy scipy matplotlib netcdf4 Pillow
+
     
 ## Update
 You can update the cloud toolkit (or typhon) by running this command in the 

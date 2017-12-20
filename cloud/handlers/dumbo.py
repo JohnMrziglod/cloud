@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 
 import numpy as np
 from typhon.spareice.handlers import FileHandler
@@ -18,7 +18,7 @@ class ThermoCamASCII(FileHandler):
         # Call the base class initializer
         super(ThermoCamASCII, self).__init__(**kwargs)
 
-    def get_info(self, filename):
+    def get_info(self, filename, **kwargs):
         """ Get info parameters from a file (time coverage, etc).
 
         Args:
@@ -29,16 +29,21 @@ class ThermoCamASCII(FileHandler):
         """
 
         with open(filename, "r") as f:
-            date_time = f.readline().rstrip('\n').split('\t')[1]
+            timestamp = self._get_timestamp(f)
 
             info = {
                 "times": [
-                    datetime.datetime.strptime(date_time, "%d.%m.%Y %H:%M:%S"),
-                    datetime.datetime.strptime(date_time, "%d.%m.%Y %H:%M:%S")
+                    timestamp,
+                    timestamp,
                 ],
             }
 
             return info
+
+    @staticmethod
+    def _get_timestamp(file):
+        date_time = file.readline().rstrip('\n').split('\t')[1]
+        return datetime.strptime(date_time, "%d.%m.%Y %H:%M:%S")
 
     def read(self, filename, **kwargs):
         """
@@ -54,16 +59,25 @@ class ThermoCamASCII(FileHandler):
         data = None
 
         with open(filename, "r") as f:
+            timestamp = self._get_timestamp(f)
+
             data = np.genfromtxt(
-                # Okay, what are we doing here? We need a numpy array from an ascii file. numpy.genfromtxt() expects as
-                # first argument an iterable argument (see http://stackoverflow.com/a/18744706). We give it by looping
-                # over all lines from the file. Since we want to skip the first line (it just contains indices), we
-                # split up each line along its delimiter, skip the first column and put them with the delimiter together
-                # again. Our ASCII data contains commas as decimal delimiter, we have to replace them here as well.
+                # TODO: Replace this code with something readable!
+                # Okay, what are we doing here? We need a numpy array from an
+                # ascii file. numpy.genfromtxt() expects as first argument an
+                # iterable argument (see http://stackoverflow.com/a/18744706).
+                # We give it by looping over all lines from the file. Since we
+                # want to skip the first line (it just contains indices), we
+                # split up each line along its delimiter, skip the first column
+                # and put them with the delimiter together again. Our ASCII
+                # data contains commas as decimal delimiter, we have to replace
+                # them here as well.
                 ("\t".join(line.split('\t')[1:]).replace(',', '.').encode() for line in f),
                 delimiter='\t',
                 dtype=None,
-                skip_header=3
+                # We skipped already the first line in _get_timestamp, so only
+                # two header lines are left.
+                skip_header=2
             )
 
-        return ThermoCamImage(data)
+        return ThermoCamImage(data, time=timestamp)
