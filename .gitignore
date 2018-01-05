@@ -2,6 +2,9 @@
 *.swp
 .idea
 .DS_Store
-doc/_build
-doc/generated
-typhon.egg-info
+docs/build
+docs/generated
+manual/*synctex.gz
+manual/*.aux
+manual/*.log
+manual/*.out

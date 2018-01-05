@@ -135,7 +135,7 @@ If one works on the instruments during measuring, some images might be falsified
 
 \section{Usage \& Workflow}
 \label{sec:usage-workflow}
-Before running any scripts you should check whether all configuration keys in \texttt{config.ini} are correctly set and whether the paths point to existing files (unless they are for files that are going to be created). Make sure that the scripts that you want to run have executive permissions. \footnote{If not, you may run \texttt{\$ chmod 744 script\_name.py} first.} Afterwards you can follow this workflow:
+Before running any scripts you should check whether all configuration keys in \texttt{config.ini} are correctly set and whether the paths point to existing files (unless they are for files that are going to be created). Make sure that the scripts that you want to run have executive permissions.\footnote{If not, you may run \texttt{\$ chmod 744 script\_name.py} first.} Afterwards you can follow this workflow:
 
 \begin{enumerate}
 	\item \textbf{Copy the new data to their locations:} After recording, copy the data from the cameras and other instruments to the locations that you have set in the configuration file. Pinocchio images should be saved in tarball archives as JPG files, Dumbo images as ASCII files in unzipped folders. The Ceilometer data should be in netCDF format and the DShip data in CSV files.
