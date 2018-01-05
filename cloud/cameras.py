@@ -1,4 +1,9 @@
-from time import time
+"""Works with the files of the cameras Dumbo and Pinocchio.
+
+Provides a function to convert raw files to netCDF files and apply a mask on
+them. A second function can calculate the cloud statistics of those files.
+"""
+
 import os.path
 from scipy.interpolate import interp1d
 
@@ -10,15 +15,15 @@ __all__ = [
 ]
 
 
-def _create_hourly_movies(movies, mask):
-    """
+def _join_movies(movies, mask):
+    """Small helper function to join short movies to one long movie.
 
     Args:
-        movies:
-        mask:
+        movies: A list of cloud.ThermalCamMovie objects.
+        mask: A mask that should be applied on those movies
 
     Returns:
-
+        One movie out of *movies*.
     """
     if not movies:
         return None
@@ -36,14 +41,17 @@ def _create_hourly_movies(movies, mask):
 
 
 def convert_raw_files(datasets, instrument, config, start, end,):
-    """Convert the raw files from jpg to netcdf.
+    """Convert the raw files from an instrument to netCDF format.
+
+    If a mask file is set for this instrument in *config*, then the mask will
+    be applied on its images.
 
     Args:
-        datasets:
-        instrument:
-        config:
-        start:
-        end:
+        datasets: A DatasetManager object.
+        instrument: The name of the instrument that should be processed.
+        config: A dictionary-like object with configuration keys.
+        start: Start time as string.
+        end: End time as string.
 
     Returns:
         None
@@ -64,7 +72,7 @@ def convert_raw_files(datasets, instrument, config, start, end,):
     # Convert all pinocchio files and join them to hourly netcdf files.
     # Apply also a mask if available.
     datasets[instrument+"-raw"].map_content(
-        start, end, func=_create_hourly_movies,
+        start, end, func=_join_movies,
         func_arguments={
             "mask": mask,
         },
@@ -77,6 +85,11 @@ def convert_raw_files(datasets, instrument, config, start, end,):
 
 
 def _load_metadata(datasets, config_dict, start, end):
+    """Small helper function that load the metadata to a global variable.
+
+    """
+
+    # Global variables are okay when we use multiprocessing:
     global all_metadata
     global config
     config = config_dict
@@ -88,13 +101,13 @@ def _load_metadata(datasets, config_dict, start, end):
 
 
 def _cloud_parameters(movie):
-    """Helper function for calculate_cloud_statistics.
+    """Helper function for calculating cloud statistics.
 
     Args:
         movie: A ThermalCamMovie object that contains many thermal cam images.
 
     Returns:
-
+        An ArrayGroup object with cloud parameters
     """
     start, end = movie.get_range("time")
 
@@ -122,17 +135,19 @@ def _cloud_parameters(movie):
 
 
 def calculate_cloud_statistics(datasets, instrument, config, start, end,):
-    """Calculate cloud statistics of thermal cam images.
+    """Calculate cloud statistics for a period of thermal cam images.
+
+    Uses the netcdf files from a instrument.
 
     Args:
-        datasets:
-        instrument:
-        config:
-        start:
-        end:
+        datasets: A DatasetManager object.
+        instrument: The name of the instrument that should be processed.
+        config: A dictionary-like object with configuration keys.
+        start: Start time as string.
+        end: End time as string.
 
     Returns:
-
+        None
     """
     print("Prepare calculation of cloud parameters between %s and %s" % (
         start, end))

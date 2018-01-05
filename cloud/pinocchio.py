@@ -139,7 +139,7 @@ def create_calibration_file(calibration_images_path, temperature_file,
             image.to_brightness()
             image.apply_mask(mask)
             # values[i] = data[data.shape[0]/2][data.shape[1]/2]
-            values[i] = np.nanmedian(image.data)  # [data.shape[0] / 2][data.shape[1] / 2]
+            values[i] = np.nanmedian(image.data)
         temperature_pixel[temperature] = np.nanmedian(values)
 
     curve = True
@@ -207,7 +207,7 @@ class ThermalCam(FileHandler):
                 255) and the second denotes the corresponding temperature. This
                 reader will fit a curve to those calibration values and convert
                 all pixels of a thermal cam image according to it.
-            **kwargs:
+            **kwargs: Additional keyword arguments for FileHandler base class.
         """
         # Call the base class initializer
         super(ThermalCam, self).__init__(**kwargs)
@@ -233,12 +233,10 @@ class ThermalCam(FileHandler):
                 get_calibration(data[:, 0], data[:, 1])
 
     def get_info(self, filename, **kwargs):
-        """
-        Sollte mit EXIF Daten funktionieren, das kann man mit PIL machen:
-        https://stackoverflow.com/questions/4764932/in-python-how-do-i-read-the-exif-data-for-an-image
+        """Get the time coverage from a Pinocchio JPG image.
 
         Args:
-            filename:
+            filename: Path and name of file
 
         Returns:
             A FileInfo object.
@@ -257,8 +255,7 @@ class ThermalCam(FileHandler):
         )
 
     def read(self, filename, **kwargs):
-        """
-        Reads an image and converts it to a cloud.ThermalCamMovie object.
+        """Read an JPG image and convert it to a cloud.ThermalCamMovie object.
 
         Args:
             filename: Path and name of file

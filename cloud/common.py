@@ -1,13 +1,15 @@
+"""Contains the classes and functions for mask and movie handling.
+
+Every thermal camera image will be converted to a ThermalCamMovie object by the
+file handlers of Pinocchio or Dumbo.
+"""
+
 from collections import defaultdict
-from datetime import datetime, timezone
-import io
 import warnings
 
-from netCDF4 import Dataset
 import numpy as np
 import PIL.Image
 import PIL.PngImagePlugin
-import matplotlib.pyplot as plt
 from typhon.spareice.array import Array, ArrayGroup
 
 
@@ -61,8 +63,7 @@ def load_mask(filename):
 
 
 class Movie(ArrayGroup):
-    """A sequence of images and their timestamps.
-    """
+    """A sequence of images and their timestamps. """
 
     def apply_mask(self, mask):
         """ Applies a mask on this movie.
@@ -151,13 +152,16 @@ class Movie(ArrayGroup):
 
 
 class ThermalCamMovie(Movie):
+    """An object that can hold a sequence of thermal cam images and calculate
+    cloud statistics from them."""
+
     clouds = None
 
     def cloud_coverage(self,):
         """Calculates the cloud coverage of this image.
 
         Returns:
-            A float between 0 and 1.
+            A numpy.array with a float between 0 and 1 for each image.
         """
         if self.clouds is None:
             raise ValueError("Cannot calculate cloud parameter! You have to "
@@ -177,8 +181,8 @@ class ThermalCamMovie(Movie):
         This is simply the cloud pixel with the highest temperature.
 
         Returns:
-            The highest temperature of all cloud pixels per image. If there is
-            no cloud, NaN will be returned.
+            A numpy.array with the cloud max temperature for each image.
+            If there is no cloud, NaN will be returned.
         """
         if self.clouds is None:
             raise ValueError("Cannot calculate cloud parameter! You have to "
@@ -191,13 +195,9 @@ class ThermalCamMovie(Movie):
 
         This is simply the cloud pixel with the lowest temperature.
 
-        Args:
-            cloud_mask: Matrix with boolean values for each pixel. True means
-                cloud, False means non-cloud.
-
         Returns:
-            The lowest temperature of all cloud pixels. If there is no cloud,
-            NaN will be returned.
+            A numpy.array with the cloud min temperature for each image.
+            If there is no cloud, NaN will be returned.
         """
         if self.clouds is None:
             raise ValueError("Cannot calculate cloud parameter! You have to "
@@ -206,6 +206,14 @@ class ThermalCamMovie(Movie):
         return np.nanmin(self.clouds, axis=(1, 2,))
 
     def cloud_mean_temperature(self,):
+        """Calculates the cloud min temperature.
+
+        This is simply the mean temperature of all cloud pixels.
+
+        Returns:
+            A numpy.array with the cloud mean temperature for each image.
+            If there is no cloud, NaN will be returned.
+        """
         if self.clouds is None:
             raise ValueError("Cannot calculate cloud parameter! You have to "
                              "call ThermalCamMovie.find_clouds() first!")
@@ -213,6 +221,19 @@ class ThermalCamMovie(Movie):
         return np.nanmean(self.clouds, axis=(1, 2,))
 
     def cloud_inhomogeneity(self,):
+        """Calculates the cloud inhomogeneity.
+
+        A number that represents the jaggedness of the clouds. It is defined by
+        the ratio between the perimeter and the area of the cloud pixels:
+
+        .. math::
+
+            CI = \frac{p_cloud}{A_cloud}
+
+
+        Returns:
+            A numpy.array with the cloud inhomogeneity for each image.
+        """
         if self.clouds is None:
             raise ValueError("Cannot calculate cloud parameter! You have to "
                              "call ThermalCamMovie.find_clouds() first!")
@@ -237,10 +258,10 @@ class ThermalCamMovie(Movie):
         level.
 
         The levels are:
-            Up to 2000m: Low clouds - class 1.
-            2000m - 6000m: Middle high clouds - class 2.
-            6000m - 10000m: Middle high clouds - class 3.
-            No cloud - class 0.
+            * Up to 2000m: Low clouds - class 1.
+            * 2000m - 6000m: Middle high clouds - class 2.
+            * 6000m - 10000m: Middle high clouds - class 3.
+            * No cloud - class 0.
 
         Args:
             t_surface: Temperature of the surface / near surface. Either it is

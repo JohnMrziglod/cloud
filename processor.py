@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 
 """
-This script does the whole workflow for Pinocchio or Dumbo data, including:
+This script does a part of the whole workflow for Pinocchio or Dumbo data,
+including:
 
-1) Extraction of tar zipped files (only for Pinocchio).
-2) Conversion of raw files (JPG when Pinocchio, ASCII when Dumbo) into netCDF
-format.
-3) Masking parts of the images according to a given mask.
-4) Calculation of cloud parameters (DShip data needed).
+1. Extraction of tar zipped files (only for Pinocchio).
+2. Conversion of raw files (JPG when Pinocchio, ASCII when Dumbo) into netCDF
+   format.
+3. Masking parts of the images according to a given mask.
+4. Calculation of cloud parameters (DShip data needed).
+
 """
 
 import argparse
@@ -22,7 +24,7 @@ def extract_raw_files(datasets, config, start, end, convert=False):
     """Extract the archive files from Pinocchio
 
     Args:
-        dataset:
+        datasets:
         config:
         start:
         end:

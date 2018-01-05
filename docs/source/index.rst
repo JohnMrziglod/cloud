@@ -1,16 +1,20 @@
-.. The Cloud Toolbox documentation master file, created by
-   sphinx-quickstart on Fri Jan  5 04:18:45 2018.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
-Welcome to The Cloud Toolbox's documentation!
-=============================================
+Scripts
+=======
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
+   processor.rst
+   monitor.rst
+   pinocchio_calibration.rst
 
+Modules
+=======
+
+.. toctree::
+   :maxdepth: 2
+
+   cloud.rst
 
 Indices and tables
 ==================

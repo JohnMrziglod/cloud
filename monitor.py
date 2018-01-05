@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 
 """
-This script monitors all measurements of a cruise including dship data,
-pinocchio, dumbo and ceilometer measurements.
+This script can create two types of plots:
+
+* Overview plot: monitors all measurements of all instruments of a cruise
+  including dship data, pinocchio, dumbo and ceilometer measurements.
+* Comparison plot: shows all cloud parameters of the Dumbo and Pinocchio
+  instruments.
+
 """
 
 import argparse
