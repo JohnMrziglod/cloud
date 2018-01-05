@@ -17,13 +17,14 @@ physics):
 and you will need other python packages:
 * numpy
 * scipy
+* pandas
 * matplotlib
 * Pillow
 * netcdf4
 
 You can install them via:
 
-    ﻿pip3 install --user numpy scipy matplotlib netcdf4 Pillow
+    ﻿pip3 install --user numpy scipy pandas matplotlib netcdf4 Pillow
 
     
 ## Update
@@ -34,7 +35,7 @@ You can update the cloud toolkit (or typhon) by running this command in the
     
 ## Usage
 This cloud toolkit contains several scripts:
-*   **pinocchio_workflow.py**: Opens the raw files of the Pinocchio
+*   **processor.py**: Opens the raw files of the Pinocchio
 thermal cam, converts them either to PNG images or netcdf files and apply a 
 image mask. Then calculates the cloud parameters (coverage, inhomogeneity,
 etc.) from pinocchio netcdf thermal cam images.
