@@ -38,7 +38,7 @@ $ make html
 ```
 
 Every script has also a ```-h``` option that provides further documentation 
-over the command line.
+via the command line.
     
 ## Update
 You can update the cloud toolkit (or typhon) by running this command in the 
