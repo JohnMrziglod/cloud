@@ -85,8 +85,9 @@ The \cloud toolbox contains scripts that are designed to be used from the comman
 	\hline 
 	\texttt{monitor.py} & \tabitem Produces overview and comparison plots for all components.\\ 
 	\hline 
-	\texttt{pinocchio\_calibration.py} &  \tabitem Creates a calibration file from a performed Pinocchio calibration\\
-	& (see section \ref{sec:calibration}). \\ 
+	\texttt{pinocchio\_calibration.py} &  Generates a calibration file from a performed Pinocchio calibration\\
+	& (see section \ref{sec:calibration}). Note: this script is deprecated and should be\\
+	& rewritten before use\\
 	\hline
 	\end{tabular} 
 \end{table}
@@ -121,7 +122,9 @@ The configuration file syntax is similar to Windows' \href{https://en.wikipedia.
     \end{tabular}
 \end{table}
 
-You can define via paths which files should be processed by the scripts and where they should be created. The paths can contain placeholders (e.g. \texttt{\{year\}}, \texttt{\{month\}}, etc.) that are used to retrieve temporal information from the path names.
+You can define via paths which files should be processed by the scripts and where they should be created. The paths can contain placeholders (e.g. \texttt{\{year\}}, \texttt{\{month\}}, etc.) that are used to retrieve temporal information from the path names.\\
+
+This manual and in the command line documentation of the scripts will refer to the configuration keys in the file via \config{Section}{key}.
 
 \subsection{Calibration file}
 Pinocchio instruments need calibration files to convert the pixel brightness into a temperature. Those calibration files are in CSV format and must contain two columns: one with pixel brightnesses (between 0-255) and one with their corresponding temperatures (in degree Celsius). You can find current calibration files in the directory \texttt{calibration}. You can create your own calibration files after performing a calibration with \texttt{pinocchio\_calibration.py} (see section \ref{sec:calibration}). Set the path to the calibration file that you want to use in the config file via the key \config{Pinocchio}{calibration}.
@@ -145,12 +148,12 @@ Before running any scripts you should check whether all configuration keys in \t
 		\texttt{\$ ./processor.py -xcs "2017-11-03" "2017-11-04" }
 		\item Same as above but with a shorter time period:\\
 		\texttt{\$ ./processor.py -xcs "2017-11-03 12:00:00" "2017-11-03 16:00:00" }
-		\item Dumbo images can be processed by using the \texttt{instrument} (\texttt{-i}) option:\\
+		\item Dumbo images can be processed by using the \texttt{instrument} (\texttt{-i}) option. Note that the \texttt{extract} (\texttt{-x}) option is unnecessary for Dumbo files and can be left out.\\
 		\texttt{\$ ./processor.py -csi Dumbo "2017-11-03" "2017-11-04" }
 		\item If you want to calculate cloud parameters from already existing netCDF files of Pinocchio: \\
 		\texttt{\$ ./processor.py -s "2017-11-03" "2017-11-04" }
 	\end{itemize}
-	\item \textbf{Create plots:}  You can plot an overview of all instruments with \texttt{monitor.py}. It can also create comparison plots between Dumbo and Pinocchio. The most common calls of \texttt{monitor.py} are:
+	\item \textbf{Create plots:}  You can plot an overview of all instruments with \texttt{monitor.py}. It can also create comparison plots between Dumbo and Pinocchio (see figure \ref{fig:plots} for an example).The most common calls of \texttt{monitor.py} are:
 	\begin{itemize}
 		\item Plot an overview of all instruments from 2017-11-02 to 2017-11-10:\\
 		\texttt{\$ ./monitor.py -o "2017-11-03" "2017-11-10" }
@@ -159,12 +162,32 @@ Before running any scripts you should check whether all configuration keys in \t
 		\item Comparison plots of Pinocchio and Dumbo can be created with this command:\\
 		\texttt{\$ ./monitor.py -c "2017-11-03" "2017-11-04" }
 	\end{itemize}
-
+	\begin{figure}
+	\centering
+	\begin{minipage}{.5\textwidth}
+  		\centering
+  		\includegraphics[width=\linewidth]{figures/overview.png}
+	\end{minipage}%
+	\begin{minipage}{.5\textwidth}
+  		\centering
+  		\includegraphics[width=\linewidth]{figures/comparison.png}
+	\end{minipage}
+	\caption{Overview and comparison plot.}
+	\label{fig:plots}
+\end{figure}
+	
 \end{enumerate}
 
 \section{Cloud parameters}
 \label{sec:cloud-parameters}
-The main goal of SACIS is to calculate parameters from cloud images and retrieve further climate statistics. With \texttt{processor.py} one can calculate basic cloud parameters which are saved in the statistics files (where they should be saved can be set via \config{instrument}{stats}).
+The main goal of SACIS is to calculate parameters from cloud images and retrieve further climate statistics. With \texttt{processor.py} one can calculate basic cloud parameters which are saved in the statistics files (where they should be saved can be set via \config{instrument}{stats}). All cloud parameters are available for three different height levels:
+\begin{itemize}
+	\item Level 1 - Low clouds: All clouds with a base height up to 2 km.
+	\item Level 2 - Middle high clouds: All clouds with a base height from to 2 to 6 km.
+	\item Level 3 - High clouds: All clouds with a base height higher than 6 km.
+\end{itemize}
+
+The cloud base height is retrieved by using a temperature gradient. At the moment, the temperature gradient is simply a lapse rate which provides a linear temperature descent (no inversions included). You can set the lapse rate via the config key \config{General}{lapse\_rate}.
 
 \subsection{cloud\_coverage}
 The cloud coverage $CC$ is the ratio between the number of cloud pixels and the total number of all unmasked pixel of the image:
@@ -174,7 +197,13 @@ The cloud coverage $CC$ is the ratio between the number of cloud pixels and the 
 \end{equation}
 
 \subsection{cloud\_inhomogeneity}
-The cloud coverage $CI$ is the ratio between the number of cloud pixels and the total number of all unmasked pixel of the image:
+The cloud inhomogeneity $CI$ is a number to quantity the jaggedness of the clouds. It is defined by the perimeter of the clouds divided by their area:
+
+\begin{equation}
+	CI = \frac{p_\text{cloud}}{A_\text{cloud}} \qquad [0 - \infty]
+\end{equation}
+
+Please note that this parameter is very experimental and may be influenced by image size and the used mask.
 
 \subsection{cloud\_mean\_temperature}
 The cloud mean temperature $CT_\text{mean}$ is the mean temperature of all cloud pixels.
@@ -187,6 +216,7 @@ The cloud min temperature $CT_\text{min}$ is the minimum temperature of all clou
 
 \section{Calibration of Pinocchio}
 \label{sec:calibration}
+FIXME: Insert instructions how to do the calibration of a Pinocchio camera and how to generate a calibration file.
 
 \section{Development of \cloud}
 \label{sec:development}
@@ -194,7 +224,7 @@ The cloud min temperature $CT_\text{min}$ is the minimum temperature of all clou
 \subsection{Developer documentation}
 There is a HTML documentation of all used modules and classes which can be generated by \href{http://www.sphinx-doc.org/en/stable/install.html}{Sphinx}. Call these commands in the directory of your \cloud toolbox:
 
-\texttt{\$ cd doc}\\
+\texttt{\$ cd docs}\\
 \texttt{\$ make html}\\
 
 \subsection{Code style and design}
@@ -202,28 +232,28 @@ I tried following the \href{https://google.github.io/styleguide/pyguide.html}{Co
 
 The files for each instrument are represented by \texttt{typhon.spareice.Dataset} objects (\href{http://radiativetransfer.org/misc/typhon/doc-trunk/tutorials/dataset.html}{link} to further documentation and tutorial). I developed those objects to make handling and processing of datasets with many files easier and faster. \texttt{typhon.spareice.Dataset} is still under development and may change its API and name in future. When those major changes come, I will contact you so that the \cloud toolbox can be developed and still benefit from typhon updates.
 
-\subsection{Modules}
-The scripts from section \ref{sec:scripts} mainly call functions from modules. If you want to develop the \cloud toolbox, you should modify the modules rather than the scripts. They are located in the \texttt{cloud} folder.
-\begin{table}[h!]
-	\centering
-	\begin{tabular}{|l|l|}
-	\hline 
-	\textbf{Module} & \textbf{Description}\\ 
-	\hline \hline 
-	\texttt{image.py} & \tabitem Converts pinocchio files from jpg to netcdf format and\\ 
-	& applies calibration.\\
-	& \tabitem Applies mask on pinocchio images.\\
-	& \tabitem Calculates cloud statistics from pinocchio images.\\ 
-	\hline 
-	\texttt{pinocchio\_calibration.py} &  \tabitem Creates calibration file from pinocchio images \\
-	& (see section FIXME)\\ 
-	\hline 
-	\texttt{dumbo\_workflow.py} & \tabitem Converts dumbo files from ascii to netcdf format.\\
-	& \tabitem Applies mask on dumbo images.\\
-	& \tabitem Calculates cloud statistics from dumbo images.\\ 
-	\hline 
-	\texttt{monitor.py} & \tabitem Produces overview and comparison plots for all components.\\ 
-	\hline 
-	\end{tabular} 
-\end{table}
+%\subsection{Modules}
+%The scripts from section \ref{sec:scripts} mainly call functions from modules. If you want to develop the \cloud toolbox, you should modify the modules rather than the scripts. They are located in the \texttt{cloud} folder.
+%\begin{table}[h!]
+%	\centering
+%	\begin{tabular}{|l|l|}
+%	\hline 
+%	\textbf{Module} & \textbf{Description}\\ 
+%	\hline \hline 
+%	\texttt{image.py} & \tabitem Converts pinocchio files from jpg to netcdf format and\\ 
+%	& applies calibration.\\
+%	& \tabitem Applies mask on pinocchio images.\\
+%	& \tabitem Calculates cloud statistics from pinocchio images.\\ 
+%	\hline 
+%	\texttt{pinocchio\_calibration.py} &  \tabitem Creates calibration file from pinocchio images \\
+%	& (see section FIXME)\\ 
+%	\hline 
+%	\texttt{dumbo\_workflow.py} & \tabitem Converts dumbo files from ascii to netcdf format.\\
+%	& \tabitem Applies mask on dumbo images.\\
+%	& \tabitem Calculates cloud statistics from dumbo images.\\ 
+%	\hline 
+%	\texttt{monitor.py} & \tabitem Produces overview and comparison plots for all components.\\ 
+%	\hline 
+%	\end{tabular} 
+%\end{table}
 \end{document}

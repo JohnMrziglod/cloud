@@ -54,6 +54,11 @@ def create_calibration_file(calibration_images_path, temperature_file,
                             calibration_file, mask, plot_file=None):
     """Create a calibration file for the pinocchio thermal cam.
 
+    Warnings:
+        This is an old function that has not been updated since September 2017.
+        It does not work probably at the moment, but it should be simple to
+        rewrite it for using it again.
+
     The created file is in CSV format and can be used as calibration for the
     cloud.pinocchio.ThermalCam() file handler class.
 
@@ -253,14 +258,13 @@ class ThermalCam(FileHandler):
 
     def read(self, filename, **kwargs):
         """
-        Reads an image and converts it to np.array.
+        Reads an image and converts it to a cloud.ThermalCamMovie object.
 
         Args:
             filename: Path and name of file
 
         Returns:
-            Either a cloud.image.ThermalCamImage or a cloud.image.Image
-            object.
+            Either a cloud.ThermalCamMovie or a cloud.Movie object.
         """
 
         # read image
@@ -295,67 +299,61 @@ class ThermalCam(FileHandler):
             )
             movie["time"] = [time]
 
-        # Pinocchio thermal cams put border of one pixel width at the left and
-        # top side. -> We cover this with the image mask:
-        # img.cut(0, 0)
         return movie
 
-        # black pixels = NaN
-        # data[data == 0] = np.nan
 
-
-class WebCam(FileHandler):
-    """ This class can read web cam images of the Pinocchio instrument.
-
-
-    """
-
-    def __init__(self, **kwargs):
-
-        # Call the base class initializer
-        super(WebCam, self).__init__(**kwargs)
-
-    def get_info(self, filename):
-        """
-
-        Args:
-            filename:
-
-        Returns:
-            A dictionary with info parameters.
-        """
-        ...
-
-    def read(self, filename):
-        """
-        Reads an image and converts it to np.array.
-
-        Args:
-            filename: Path and name of file
-
-        Returns:
-            Image
-        """
-
-        # read image
-        image = PIL.Image.open(filename, 'r')
-
-        # convert it to a grey scale image
-        #data = np.float32(np.array(image.convert('L')))
-
-        data = np.float32(np.array(image))
-
-        # black pixels = NaN
-        #data[data == 0] = np.nan
-
-        return Image(data)
-
-
-class WebCamFishEye(WebCam):
-    def __init__(self, **kwargs):
-        super(WebCamFishEye, self).__init__(**kwargs)
-
-    def read(self, filename):
-        image = super(WebCamFishEye, self).read(filename)
-
-        #image.distortion()
+# class WebCam(FileHandler):
+#     """ This class can read web cam images of the Pinocchio instrument.
+#
+#
+#     """
+#
+#     def __init__(self, **kwargs):
+#
+#         # Call the base class initializer
+#         super(WebCam, self).__init__(**kwargs)
+#
+#     def get_info(self, filename):
+#         """
+#
+#         Args:
+#             filename:
+#
+#         Returns:
+#             A dictionary with info parameters.
+#         """
+#         ...
+#
+#     def read(self, filename):
+#         """
+#         Reads an image and converts it to np.array.
+#
+#         Args:
+#             filename: Path and name of file
+#
+#         Returns:
+#             Image
+#         """
+#
+#         # read image
+#         image = PIL.Image.open(filename, 'r')
+#
+#         # convert it to a grey scale image
+#         #data = np.float32(np.array(image.convert('L')))
+#
+#         data = np.float32(np.array(image))
+#
+#         # black pixels = NaN
+#         #data[data == 0] = np.nan
+#
+#         return Movie(data)
+#
+#
+# class WebCamFishEye(WebCam):
+#     def __init__(self, **kwargs):
+#         super(WebCamFishEye, self).__init__(**kwargs)
+#
+#     def read(self, filename):
+#         image = super(WebCamFishEye, self).read(filename)
+#
+#         #image.distortion()

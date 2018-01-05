@@ -9,6 +9,12 @@ __all__ = [
 
 
 def get_standard_parser():
+    """Get standard parser for command line arguments.
+
+    Returns:
+        An argparse.ArgumentParser object.
+    """
+
     parser = argparse.ArgumentParser(
         add_help=False,
     )
@@ -33,6 +39,15 @@ def get_standard_parser():
 
 
 def load_config(filename):
+    """Load the config dictionary from a file.
+
+    Args:
+        filename: Path and name of the config file.
+
+    Returns:
+        A configparser.Namespace object (you can handle it like a dictionary).
+    """
+
     # Import the configuration file:
     config = ConfigParser()
     config.read(filename)

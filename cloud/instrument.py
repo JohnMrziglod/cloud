@@ -88,7 +88,7 @@ def _load_metadata(datasets, config_dict, start, end):
 
 
 def _cloud_parameters(movie):
-    """
+    """Helper function for calculate_cloud_statistics.
 
     Args:
         movie: A ThermalCamMovie object that contains many thermal cam images.
@@ -122,7 +122,7 @@ def _cloud_parameters(movie):
 
 
 def calculate_cloud_statistics(datasets, instrument, config, start, end,):
-    """
+    """Calculate cloud statistics of thermal cam images.
 
     Args:
         datasets:

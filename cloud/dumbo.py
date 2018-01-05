@@ -41,13 +41,13 @@ class ThermalCamASCII(FileHandler):
 
     def read(self, filename, **kwargs):
         """
-        Loads an ASCII file and converts it to np.array.
+        Loads an ASCII file and converts it to cloud.ThermalCamMovie object.
 
         Args:
-            filename: Path and name of file
+            filename: Path and name of the file
 
         Returns:
-            numpy.array
+            A cloud.ThermalCamMovie object.
         """
 
         with open(filename, "r") as f:
