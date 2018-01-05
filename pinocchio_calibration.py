@@ -7,7 +7,7 @@ This script creates a calibration file for the Pinocchio thermal cam from the ca
 import matplotlib as mpl
 mpl.use('Agg')
 import numpy as np
-import cloud.handlers.pinocchio
+import cloud.pinocchio
 
 create_calibration_file = False
 apply_calibration = True
@@ -19,7 +19,7 @@ calibration_mask[115:130, 160:180] = 1
 calibration_mask = calibration_mask == 1
 
 if True:
-    fh = cloud.handlers.pinocchio.ThermoCamFile()
+    fh = cloud.handlers.pinocchio.ThermalCamFile()
     img = fh.read("/home/mpim/m300472/work/data/calibration/pinocchio_001_2017-09-25/-14/m170925122802592.jpg", convert_to_temperatures=False)
     img.to_brightness()
     img.apply_mask(calibration_mask)

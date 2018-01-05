@@ -1,6 +1,5 @@
-from datetime import datetime
-
-from typhon.spareice.handlers.common import CSV
+import pandas as pd
+from typhon.spareice.handlers import CSV
 
 __all__ = [
     "ShipMSM",
@@ -28,10 +27,14 @@ class ShipMSM(CSV):
             "Weatherstation.PDWDA.Humidity": "humidity",
             "Weatherstation.PDWDA.Water_temperature": "water_temperature",
         })
-        data["time"] = \
-            [datetime.strptime(str(dt, "utf-8"), "%Y/%m/%d %H:%M:%S")
-             for dt in data["date time"]]
+        data["time"] = pd.to_datetime(
+            [dt.decode("utf-8") for dt in data["date time"]]
+        )
         data.drop(("date time",))
+
+        # Filter out error values.
+        data = data[data["air_temperature"] < 99]
+        data = data[data["air_pressure"] > 500]
 
         return data
 
