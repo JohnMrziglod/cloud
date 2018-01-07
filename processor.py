@@ -13,6 +13,8 @@ including:
 """
 
 import argparse
+import logging
+import logging.config
 import os.path
 import shutil
 import tarfile
@@ -20,22 +22,26 @@ import tarfile
 import cloud
 
 
+logger = logging.getLogger(__name__)
+
+
 def extract_raw_files(datasets, config, start, end, convert=False):
     """Extract the archive files from Pinocchio
 
     Args:
-        datasets:
-        config:
-        start:
-        end:
-        convert:
+        datasets: A DatasetManager object.
+        config: A dictionary-like object with configuration keys.
+        start: Start time as string.
+        end: End time as string.
+        convert: If true, the files will be also converted and afterwards
+            deleted.
 
     Returns:
         None
     """
 
     for archive in datasets["Pinocchio-archive"].find_files(start, end):
-        print("Extract all files from %s" % archive.path)
+        logger.info("Extract all files from %s" % archive.path)
         archive_file = tarfile.open(archive, mode="r:gz")
         tmpdir = os.path.splitext(archive)[0]
         archive_file.extractall(path=tmpdir)
@@ -43,9 +49,8 @@ def extract_raw_files(datasets, config, start, end, convert=False):
         if convert:
             cloud.convert_raw_files(datasets, "Pinocchio", config, start, end)
 
-            print("Delete extracted files.")
+            logger.info("Delete extracted files.")
             shutil.rmtree(tmpdir)
-    exit()
 
 
 def get_cmd_line_parser():
@@ -112,13 +117,11 @@ def get_cmd_line_parser():
 
 
 def main():
-    # Parse all command line arguments and load the config file:
-    config, args = cloud.load_config_and_parse_cmdline(
+    # Parse all command line arguments and load the config file and the
+    # datasets:
+    config, args, datasets = cloud.init_toolbox(
         get_cmd_line_parser()
     )
-
-    # Load all relevant datasets:
-    datasets = cloud.load_datasets(config)
 
     actions = [
         ["Start date:", str(args.start)],
@@ -129,7 +132,7 @@ def main():
         ["Statistics:", str(args.stats)],
     ]
 
-    print("Script configuration:")
+    logger.info("Script configuration:")
     for i, action in enumerate(actions):
         print("    {:<15} {:<12}".format(*action))
 

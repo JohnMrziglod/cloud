@@ -4,6 +4,7 @@ Provides a function to convert raw files to netCDF files and apply a mask on
 them. A second function can calculate the cloud statistics of those files.
 """
 
+import logging
 import os.path
 from scipy.interpolate import interp1d
 
@@ -13,6 +14,8 @@ __all__ = [
     "calculate_cloud_statistics",
     "convert_raw_files",
 ]
+
+logger = logging.getLogger(__name__)
 
 
 def _join_movies(movies, mask):
@@ -28,14 +31,18 @@ def _join_movies(movies, mask):
     if not movies:
         return None
 
-    # Connect all short movies (single images) to one movie:
-    movie = cloud.ThermalCamMovie.concatenate(movies)
-    start, end = movie.get_range("time")
-    print("\tJoined %s to %s files to hourly bundle" % (start, end))
+    try:
+        # Connect all short movies (single images) to one movie:
+        movie = cloud.ThermalCamMovie.concatenate(movies)
+        start, end = movie.get_range("time")
+        logger.info("\tJoined %s to %s files to hourly bundle" % (start, end))
 
-    # Apply the mask on the movie
-    if mask is not None:
-        movie.apply_mask(mask)
+        # Apply the mask on the movie
+        if mask is not None:
+            movie.apply_mask(mask)
+    except Exception as err:
+        logger.error("DURING CONVERTING:", exc_info=True)
+        return None
 
     return movie
 
@@ -59,15 +66,15 @@ def convert_raw_files(datasets, instrument, config, start, end,):
 
     mask = None
     if "mask" in config[instrument]:
-        print("Load the mask")
+        logger.info("Load the mask")
         mask = cloud.load_mask(
             os.path.join(
                 config["General"]["basedir"], config[instrument]["mask"])
         )
 
-        print("Convert the raw files to netcdf and apply mask")
+        logger.info("Convert the raw files to netcdf and apply mask")
     else:
-        print("Convert the raw files to netcdf")
+        logger.info("Convert the raw files to netcdf")
 
     # Convert all pinocchio files and join them to hourly netcdf files.
     # Apply also a mask if available.
@@ -93,7 +100,7 @@ def _load_metadata(datasets, config_dict, start, end):
     global all_metadata
     global config
     config = config_dict
-    print("\tGet air temperature from %s dataset" %
+    logger.info("\tGet air temperature from %s dataset" %
           config["General"]["metadata"])
 
     all_metadata = \
@@ -111,7 +118,7 @@ def _cloud_parameters(movie):
     """
     start, end = movie.get_range("time")
 
-    print("\tCalculate cloud parameters between %s and %s" % (start, end))
+    logger.info("\tCalculate cloud parameters between %s and %s" % (start, end))
 
     metadata = all_metadata.limit_by("time", start, end)
 
@@ -126,12 +133,18 @@ def _cloud_parameters(movie):
         metadata["air_temperature"], fill_value="extrapolate"
     )
 
-    return movie.cloud_parameters(
-        temperature,
-        [float(config["General"]["lapse_rate"]) * 2.,
-         float(config["General"]["lapse_rate"]) * 4.,
-         float(config["General"]["lapse_rate"]) * 6.]
-    )
+    try:
+        parameters = movie.cloud_parameters(
+            temperature,
+            [float(config["General"]["lapse_rate"]) * 2.,
+             float(config["General"]["lapse_rate"]) * 4.,
+             float(config["General"]["lapse_rate"]) * 6.]
+        )
+    except Exception as e:  # noqa
+        logger.error("DURING PARAMETER CALCULATION:", exc_info=True)
+        return None
+
+    return parameters
 
 
 def calculate_cloud_statistics(datasets, instrument, config, start, end,):
@@ -149,8 +162,9 @@ def calculate_cloud_statistics(datasets, instrument, config, start, end,):
     Returns:
         None
     """
-    print("Prepare calculation of cloud parameters between %s and %s" % (
-        start, end))
+    logger.info(
+        "Prepare calculation of cloud parameters between %s and %s" % (
+            start, end))
 
     # Calculate the cloud parameters for each image and store them to this
     # dataset:

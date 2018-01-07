@@ -223,6 +223,9 @@ class ThermalCamMovie(Movie):
     def cloud_inhomogeneity(self,):
         """Calculates the cloud inhomogeneity.
 
+        Warnings:
+            This function does not work right now with Dumbo images.
+
         A number that represents the jaggedness of the clouds. It is defined by
         the ratio between the perimeter and the area of the cloud pixels:
 
@@ -354,11 +357,13 @@ class ThermalCamMovie(Movie):
                 {"description": "cloud mean temperature",
                  "units": "temperature [°C]"},
             ],
-            "inhomogeneity": [
-                self.cloud_inhomogeneity,
-                {"description": "cloud coverage",
-                 "units": "coverage [0-1]"},
-            ],
+            # TODO: The cloud inhomogeneity does not seem to work right now,
+            # TODO: it has some broadcasting issues.
+            # "cloud_inhomogeneity": [
+            #     self.cloud_inhomogeneity,
+            #     {"description": "cloud inhomogeneity",
+            #      "units": "coverage [0-1]"},
+            # ],
             "cloud_max_temperature": [
                 self.cloud_max_temperature,
                 {"description": "cloud max. temperature",

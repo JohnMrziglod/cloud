@@ -11,6 +11,7 @@ This script can create two types of plots:
 """
 
 import argparse
+import logging
 import os.path
 import traceback
 import warnings
@@ -20,6 +21,9 @@ import numpy as np
 import pandas as pd
 
 import cloud
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_bin_size(data_len, config):
@@ -178,7 +182,7 @@ def plot_overview(datasets, config, start, end, ):
         try:
             plot_func(axes[i], start, end, datasets, config)
         except Exception as err:
-            print("Could not create %s plot:\n%s" % (name, err))
+            logger.error("Could not create %s plot:" % name, exc_info=True)
             traceback.print_tb(err.__traceback__)
 
         axes[i].grid()
@@ -201,38 +205,70 @@ def plot_overview(datasets, config, start, end, ):
     fig.savefig(path)
 
 
-def plot_four_statistics(axes, data, config, instrument):
+def plot_four_statistics(axes, data, config, instrument, add_labels=False):
     point_size = int(config["Plots"]["point_size"])
-    bin_size = get_bin_size(len(data["time"]), config)
 
-    axes[0, 0].scatter(
-        data["time"],
-        data["cloud_coverage"].sum(axis=1),
-        s=point_size,
-        label=instrument,
-    )
-    axes[0, 1].scatter(
-        data["time"],
-        np.nanmean(data["cloud_mean_temperature"], axis=1),
-        s=point_size,
-        label=instrument,
-    )
-    axes[1, 0].scatter(
-        data["time"],
-        np.nanmin(data["cloud_min_temperature"], axis=1),
-        s=point_size,
-        label=instrument,
-    )
-    return axes[1, 1].scatter(
-        data["time"],
-        np.nanmax(data["cloud_max_temperature"], axis=1),
-        s=point_size,
-        label=instrument,
-    )
+    data_vars = set(data.vars())
+    data_vars.remove("time")
+    data_vars = list(data_vars)
+    for i, ax in enumerate(axes.flatten()):
+        ax.scatter(
+            data["time"],
+            data[data_vars[i]],
+            s=point_size,
+            label=instrument,
+        )
+
+        if add_labels:
+            ax.set_title(data[data_vars[i]].attrs["description"])
+            ax.set_ylabel(data[data_vars[i]].attrs["units"])
 
 
-def plot_comparison(datasets, config, start, end, ):
-    print("Plot comparison from %s to %s" % (start, end))
+    # axes[0, 0].scatter(
+    #     data["time"],
+    #     data["cloud_coverage"].sum(axis=1),
+    #     s=point_size,
+    #     label=instrument,
+    # )
+    # axes[0, 1].scatter(
+    #     data["time"],
+    #     np.nanmean(data["cloud_mean_temperature"], axis=1),
+    #     s=point_size,
+    #     label=instrument,
+    # )
+    # axes[1, 0].scatter(
+    #     data["time"],
+    #     np.nanmin(data["cloud_min_temperature"], axis=1),
+    #     s=point_size,
+    #     label=instrument,
+    # )
+    # return axes[1, 1].scatter(
+    #     data["time"],
+    #     np.nanmax(data["cloud_max_temperature"], axis=1),
+    #     s=point_size,
+    #     label=instrument,
+    # )
+
+
+def _prepare_parameters(data):
+    data["total_coverage"] = data["cloud_coverage"].sum(axis=1)
+    del data["cloud_coverage"]#
+    if "inhomogeneity" in data:
+        del data["inhomogeneity"]
+    if "cloud_inhomogeneity" in data:
+        del data["cloud_inhomogeneity"]
+    data["cloud_mean_temperature"] = \
+        np.nanmean(data["cloud_mean_temperature"], axis=1)
+    data["cloud_min_temperature"] = \
+        np.nanmin(data["cloud_min_temperature"], axis=1)
+    data["cloud_max_temperature"] = \
+        np.nanmax(data["cloud_max_temperature"], axis=1)
+
+    return data
+
+
+def plot_comparison(datasets, config, start, end, ptype):
+    logger.info("Plot %s from %s to %s" % (ptype, start, end))
 
     plt.rcParams.update({'font.size': 15})
     fig, axes = plt.subplots(
@@ -240,28 +276,22 @@ def plot_comparison(datasets, config, start, end, ):
     )
 
     instruments = ["Pinocchio", "Dumbo"]
-    plots = []
     for instrument in instruments:
         try:
             data = datasets[instrument+"-stats"].accumulate(start, end)
             data = data.limit_by("time", start, end)
             data = data.sort_by("time")
-            plots.append(plot_four_statistics(axes, data, config, instrument))
-        except Exception as err:
-            print("Could not plot %s :\n%s" % (instrument, err))
+            data = _prepare_parameters(data)
 
-    fig.suptitle("%s Comparison (%s - %s)" % (
-        "-".join(instruments), start, end
+            plot_four_statistics(axes, data, config, instrument)
+        except Exception as err:
+            logger.error("Could not plot %s!" % instrument, exc_info=True)
+
+    fig.suptitle("%s %s (%s - %s)" % (
+        ptype.capitalize(), "-".join(instruments), start, end
     ))
     axes[0, 0].set_xlim([start, end])
-    axes[0, 0].set_title("total coverage")
-    axes[0, 1].set_title("cloud mean temperature")
-    axes[0, 1].set_ylabel("Temperature [°C]")
-    axes[1, 0].set_title("cloud min temperature")
-    axes[1, 0].set_ylabel("Temperature [°C]")
     axes[1, 0].set_xlabel("Time [UTC]")
-    axes[1, 1].set_title("cloud max temperature")
-    axes[1, 1].set_ylabel("Temperature [°C]")
     axes[1, 1].set_xlabel("Time [UTC]")
 
     # Show only every second xtick
@@ -273,11 +303,11 @@ def plot_comparison(datasets, config, start, end, ):
     for ax in axes.flatten():
         ax.grid()
 
-    handles, labels = ax.get_legend_handles_labels()
+    handles, labels = axes[1, 1].get_legend_handles_labels()
     fig.legend(handles, labels, 'upper left')
 
-    path = datasets["plot-comparison"].generate_filename(
-        datasets["plot-comparison"].files, start, end)
+    path = datasets["plot-"+ptype].generate_filename(
+        datasets["plot-"+ptype].files, start, end)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     print("  Save to %s" % path)
 
@@ -342,41 +372,47 @@ Examples:
         help='Create comparison plots for Dumbo and Pinocchio. Saves the plots'
              ' in the path that is set by [Plots][comparison] config option.'
     )
+    parser.add_argument(
+        '-a', '--anomaly', action='store_true',
+        help='Create anomaly plots for Dumbo and Pinocchio. Saves the plots'
+             ' in the path that is set by [Plots][anomaly] config option.'
+    )
 
     return parser
 
 
+def make_plots(datasets, config, args, start, end):
+    if args.overview:
+        plot_overview(datasets, config,
+                      pd.Timestamp(start),
+                      pd.Timestamp(end), )
+
+    if args.comparison:
+        plot_comparison(datasets, config,
+                        pd.Timestamp(start),
+                        pd.Timestamp(end), "comparison")
+
+    if args.anomaly:
+        plot_comparison(datasets, config,
+                        pd.Timestamp(start),
+                        pd.Timestamp(end), )
+
+
 def main():
-    # Parse all command line arguments and load the config file:
-    config, args = cloud.load_config_and_parse_cmdline(
+    # Parse all command line arguments and load the config file and the
+    # datasets:
+    config, args, datasets = cloud.init_toolbox(
         get_cmd_line_parser()
     )
 
-    # Load all relevant datasets:
-    datasets = cloud.load_datasets(config)
-
     if args.frequency is not None:
-
         for period in pd.period_range(
                 args.start, args.end, freq=args.frequency):
 
-            if args.overview:
-                plot_overview(datasets, config,
-                              period.start_time, period.end_time, )
-
-            if args.comparison:
-                plot_comparison(datasets, config,
-                                period.start_time, period.end_time, )
+            make_plots(datasets, config, args,
+                       period.start_time, period.end_time, )
     else:
-        if args.overview:
-            plot_overview(datasets, config,
-                          pd.Timestamp(args.start),
-                          pd.Timestamp(args.end), )
-
-        if args.comparison:
-            plot_comparison(datasets, config,
-                            pd.Timestamp(args.start),
-                            pd.Timestamp(args.end), )
+        make_plots(datasets, config, args, args.start, args.end, )
 
 
 if __name__ == '__main__':
