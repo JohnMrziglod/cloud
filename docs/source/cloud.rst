@@ -22,22 +22,6 @@ cloud\.common module
     :undoc-members:
     :show-inheritance:
 
-cloud\.config module
---------------------
-
-.. automodule:: cloud.config
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-cloud\.datasets module
-----------------------
-
-.. automodule:: cloud.datasets
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 cloud\.dumbo module
 -------------------
 
@@ -58,6 +42,14 @@ cloud\.pinocchio module
 -----------------------
 
 .. automodule:: cloud.pinocchio
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+cloud\.toolbox module
+----------------------
+
+.. automodule:: cloud.toolbox
     :members:
     :undoc-members:
     :show-inheritance:

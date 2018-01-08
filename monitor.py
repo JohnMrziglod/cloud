@@ -27,6 +27,15 @@ logger = logging.getLogger(__name__)
 
 
 def get_bin_size(data_len, config):
+    """Helper function to get the bin size for averaging.
+
+    Args:
+        data_len: The length of a data array.
+        config: A dictionary-like object with configuration keys.
+
+    Returns:
+        An integer.
+    """
     # Zero means no averaging
     if int(config["Plots"]["overview_max_points"]) == 0:
         return 1
@@ -38,9 +47,21 @@ def get_bin_size(data_len, config):
     return int(bin_size)
 
 
-def plot_temperature(ax, date1, date2, dataset, config):
-    data = dataset["DShip"].accumulate(date1, date2)
-    data = data.limit_by("time", date1, date2)
+def plot_temperature(ax, start, end, datasets, config):
+    """Plot temperature data on matplotlib axis.
+
+    Args:
+        ax: A matplotlib.axis object.
+        start: Start time as string.
+        end: End time as string.
+        datasets: A DatasetManager object.
+        config: A dictionary-like object with configuration keys.
+
+    Returns:
+        None
+    """
+    data = datasets["DShip"].accumulate(start, end)
+    data = data.limit_by("time", start, end)
     data = data.sort_by("time")
 
     point_size = int(config["Plots"]["point_size"])
@@ -58,9 +79,21 @@ def plot_temperature(ax, date1, date2, dataset, config):
     ax.set_ylabel("Temperature")
 
 
-def plot_pressure(ax, date1, date2, dataset, config):
-    data = dataset["DShip"].accumulate(date1, date2)
-    data = data.limit_by("time", date1, date2)
+def plot_pressure(ax, start, end, datasets, config):
+    """Plot DShip  data on matplotlib axis.
+
+    Args:
+        ax: A matplotlib.axis object.
+        start: Start time as string.
+        end: End time as string.
+        datasets: A DatasetManager object.
+        config: A dictionary-like object with configuration keys.
+
+    Returns:
+        None
+    """
+    data = datasets["DShip"].accumulate(start, end)
+    data = data.limit_by("time", start, end)
     data = data.sort_by("time")
 
     point_size = int(config["Plots"]["point_size"])
@@ -74,9 +107,21 @@ def plot_pressure(ax, date1, date2, dataset, config):
     ax.set_ylabel("Pressure")
 
 
-def plot_humidity(ax, date1, date2, dataset, config):
-    data = dataset["DShip"].accumulate(date1, date2)
-    data = data.limit_by("time", date1, date2)
+def plot_humidity(ax, start, end, datasets, config):
+    """Plot DShip data on matplotlib axis.
+
+    Args:
+        ax: A matplotlib.axis object.
+        start: Start time as string.
+        end: End time as string.
+        datasets: A DatasetManager object.
+        config: A dictionary-like object with configuration keys.
+
+    Returns:
+        None
+    """
+    data = datasets["DShip"].accumulate(start, end)
+    data = data.limit_by("time", start, end)
     data = data.sort_by("time")
 
     point_size = int(config["Plots"]["point_size"])
@@ -90,9 +135,21 @@ def plot_humidity(ax, date1, date2, dataset, config):
     ax.set_ylabel("Humidity")
 
 
-def plot_cloud_coverage(ax, date1, date2, datasets, config, instrument):
-    data = datasets[instrument+"-stats"].accumulate(date1, date2)
-    data = data.limit_by("time", date1, date2)
+def plot_cloud_coverage(ax, start, end, datasets, config, instrument):
+    """Plot cloud coverage data on matplotlib axis.
+
+    Args:
+        ax: A matplotlib.axis object.
+        start: Start time as string.
+        end: End time as string.
+        datasets: A DatasetManager object.
+        config: A dictionary-like object with configuration keys.
+
+    Returns:
+        None
+    """
+    data = datasets[instrument+"-stats"].accumulate(start, end)
+    data = data.limit_by("time", start, end)
     data = data.sort_by("time")
 
     point_size = int(config["Plots"]["point_size"])
@@ -119,19 +176,47 @@ def plot_cloud_coverage(ax, date1, date2, datasets, config, instrument):
 
 
 def plot_dumbo(*args):
+    """Plot Dumbo data on matplotlib axis.
+
+    Args:
+        *args: Arguments that will passed to :func:`plot_cloud_coverage`.
+
+    Returns:
+        None
+    """
     plot_cloud_coverage(*args, "Dumbo")
 
 
 def plot_pinocchio(*args):
+    """Plot Pinocchio data on matplotlib axis.
+
+    Args:
+        *args: Arguments that will passed to :func:`plot_cloud_coverage`.
+
+    Returns:
+        None
+    """
     plot_cloud_coverage(*args, "Pinocchio")
 
 
-def plot_ceilometer(ax, date1, date2, dataset, config):
+def plot_ceilometer(ax, start, end, datasets, config):
+    """Plot ceilometer plot on matplotlib axis.
 
-    data = dataset["Ceilometer"].accumulate(
-        date1, date2, fields=("cbh", "time")
+    Args:
+        ax: A matplotlib.axis object.
+        start: Start time as string.
+        end: End time as string.
+        datasets: A DatasetManager object.
+        config: A dictionary-like object with configuration keys.
+
+    Returns:
+        None
+    """
+
+    data = datasets["Ceilometer"].accumulate(
+        start, end, fields=("cbh", "time")
     )
-    data = data.limit_by("time", date1, date2)
+    data = data.limit_by("time", start, end)
     data = data.sort_by("time")
 
     point_size = int(config["Plots"]["point_size"])
@@ -158,6 +243,17 @@ def plot_ceilometer(ax, date1, date2, dataset, config):
 
 
 def plot_overview(datasets, config, start, end, ):
+    """Create overview plot.
+
+    Args:
+        datasets: A DatasetManager object.
+        config: A dictionary-like object with configuration keys.
+        start: Start time as string.
+        end: End time as string.
+
+    Returns:
+        None
+    """
 
     print("Plot overview from %s to %s" % (start, end))
 
@@ -212,16 +308,16 @@ def plot_four_statistics(axes, data, config, instrument, add_labels=False):
     data_vars.remove("time")
     data_vars = list(data_vars)
     for i, ax in enumerate(axes.flatten()):
+        if add_labels:
+            ax.set_title(data[data_vars[i]].attrs["description"])
+            ax.set_ylabel(data[data_vars[i]].attrs["units"])
+
         ax.scatter(
             data["time"],
             data[data_vars[i]],
             s=point_size,
             label=instrument,
         )
-
-        if add_labels:
-            ax.set_title(data[data_vars[i]].attrs["description"])
-            ax.set_ylabel(data[data_vars[i]].attrs["units"])
 
 
     # axes[0, 0].scatter(
@@ -251,6 +347,14 @@ def plot_four_statistics(axes, data, config, instrument, add_labels=False):
 
 
 def _prepare_parameters(data):
+    """Prepare data parameters for plotting functions.
+
+    Args:
+        data: An ArrayGroup data object.
+
+    Returns:
+        None
+    """
     data["total_coverage"] = data["cloud_coverage"].sum(axis=1)
     del data["cloud_coverage"]#
     if "inhomogeneity" in data:
@@ -268,6 +372,18 @@ def _prepare_parameters(data):
 
 
 def plot_comparison(datasets, config, start, end, ptype):
+    """Plot comparison plots.
+
+    Args:
+        datasets: A DatasetManager object.
+        config: A dictionary-like object with configuration keys.
+        start: Start time as string.
+        end: End time as string.
+        ptype:
+
+    Returns:
+        None
+    """
     logger.info("Plot %s from %s to %s" % (ptype, start, end))
 
     plt.rcParams.update({'font.size': 15})
@@ -334,15 +450,13 @@ Examples:
     and calculates the cloud statistics. If [instrument][mask] is set to a 
     valid filename, a mask will be applied on all images.
 
-    > %(prog)s -xcs "2017-11-02 12:00:00" "2017-11-02 16:00:00"
-    Same as above but processes only images recorded between 12 and 16 o'clock.
+    > ./%(prog)s -o "2017-11-03" "2017-11-10"
+    Plot an overview of all instruments from 2017-11-02 to 2017-11-10.
 
-    > %(prog)s -cs -i Dumbo "2017-11-02" "2017-11-03"
-    Process all Dumbo files from the 2nd November 2017.
-
-    > %(prog)s -s "2017-11-02 12:00:00" "2017-11-02 16:00:00"
-    Calculate the cloud statistics only (you need existing netCDF files that 
-    you have converted earlier).
+    > ./%(prog)s -of 3H "2017-11-03" "2017-11-10"
+    Same as above but instead of creating one plot for the full time period,
+     we create one plot for every three hours. For this, we are using the 
+    frequency (-f) option.
     """
 
     parser = argparse.ArgumentParser(
@@ -374,14 +488,27 @@ Examples:
     )
     parser.add_argument(
         '-a', '--anomaly', action='store_true',
-        help='Create anomaly plots for Dumbo and Pinocchio. Saves the plots'
-             ' in the path that is set by [Plots][anomaly] config option.'
+        help='Note: Does not work at the moment! Create anomaly plots for '
+             'Dumbo and Pinocchio. Saves the plots in the path that is set by '
+             '[Plots][anomaly] config option.'
     )
 
     return parser
 
 
 def make_plots(datasets, config, args, start, end):
+    """Call the plotting functions for the plots requested by *args*.
+
+    Args:
+        datasets: A DatasetManager object.
+        config: A dictionary-like object with configuration keys.
+        args: An argparse object.
+        start: Start time as string.
+        end: End time as string.
+
+    Returns:
+
+    """
     if args.overview:
         plot_overview(datasets, config,
                       pd.Timestamp(start),
@@ -395,7 +522,7 @@ def make_plots(datasets, config, args, start, end):
     if args.anomaly:
         plot_comparison(datasets, config,
                         pd.Timestamp(start),
-                        pd.Timestamp(end), )
+                        pd.Timestamp(end), "anomaly")
 
 
 def main():

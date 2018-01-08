@@ -1,4 +1,4 @@
-"""Contains the classes and functions for mask and movie handling.
+"""Contains the classes for normal movies consisting of thermal cam images.
 
 Every thermal camera image will be converted to a ThermalCamMovie object by the
 file handlers of Pinocchio or Dumbo.
@@ -8,62 +8,18 @@ from collections import defaultdict
 import warnings
 
 import numpy as np
-import PIL.Image
-import PIL.PngImagePlugin
 from typhon.spareice.array import Array, ArrayGroup
 
 
 __all__ = [
-    "load_mask",
     "Movie",
     "ThermalCamMovie",
 ]
 
 
-def load_mask(filename):
-    """Loads a mask file and returns it as a numpy array where the masked
-    values are False.
-
-    This method can handle ASCII or PNG files as masks.
-
-    Args:
-        filename: Path and name of the mask file
-
-    Returns:
-        numpy.array with w x h dimensions.
-    """
-
-    if filename is None:
-        return None
-
-    mask = None
-    if filename.endswith(".png"):
-        # read image
-        image = PIL.Image.open(filename, 'r')
-
-        # convert it to a grey scale image
-        mask = np.float32(np.array(image.convert('L')))
-        mask = np.flipud(mask)
-        mask = mask == 255
-    elif filename.endswith(".txt"):
-        # Count the number of columns in that mask file.
-        with open(filename, "r") as f:
-            num_columns = len(f.readline().split(","))
-
-        mask = np.genfromtxt(
-            filename,
-            delimiter=",",
-            skip_header=1,
-            usecols=list(range(1, num_columns))
-        )
-
-        mask = mask == 1
-
-    return mask
-
-
 class Movie(ArrayGroup):
-    """A sequence of images and their timestamps. """
+    """A movie is a sequence of images and their timestamps.
+    """
 
     def apply_mask(self, mask):
         """ Applies a mask on this movie.
@@ -153,7 +109,10 @@ class Movie(ArrayGroup):
 
 class ThermalCamMovie(Movie):
     """An object that can hold a sequence of thermal cam images and calculate
-    cloud statistics from them."""
+    cloud statistics from them.
+
+    This is one of the key objects of the cloud toolbox.
+    """
 
     clouds = None
 

@@ -1,3 +1,9 @@
+"""
+This module provides functions for loading the important user files such as
+configuration, logbook, masks, etc. It can also deal with the command line
+parameters.
+"""
+
 import argparse
 from configparser import ConfigParser
 import logging
@@ -5,6 +11,8 @@ import logging.config
 import os.path
 
 import numpy as np
+import PIL.Image
+import PIL.PngImagePlugin
 from typhon.spareice.datasets import Dataset, DatasetManager
 from typhon.spareice.handlers import FileHandler
 
@@ -16,6 +24,7 @@ __all__ = [
     "load_config",
     "load_datasets",
     "load_logbook",
+    "load_mask",
 ]
 
 
@@ -128,45 +137,6 @@ def load_config(filename):
     config.read(filename)
 
     return config
-
-
-def load_logbook(filename):
-    """Loads the logbook.
-
-    The logbook is a file with time periods that should be excluded from
-    processing. Those files wont be converted from raw files to netCDF files.
-
-    Args:
-        filename: Path and name of the logbook file.
-
-    Returns:
-        A numpy.ndarray with the time periods.
-    """
-    data = np.genfromtxt(
-        filename,
-        dtype=np.datetime64,
-        usecols=(0, 1),
-    )
-
-    if (np.diff(data) < np.timedelta64()).any():
-        msg = \
-            "The logbook '%s' contains invalid time periods. The start time "\
-            "must always be earlier than the end time.\nFound invalid time " \
-            "periods in (line numbers without header):\n" % filename
-
-        fraud_lines = np.diff(data).flatten() < np.timedelta64()
-        for line, line_is_fraud in enumerate(fraud_lines, 1):
-            if line_is_fraud:
-                msg += "\tLine %d\n" % line
-
-        logger.critical(msg)
-        exit()
-
-    # One line logbooks get a different array shape
-    if len(data.shape) == 1:
-        data.shape = (1, data.shape[0])
-
-    return data.astype("O")
 
 
 def load_datasets(config):
@@ -303,3 +273,85 @@ def load_datasets(config):
     )
 
     return datasets
+
+
+
+def load_logbook(filename):
+    """Loads the logbook.
+
+    The logbook is a file with time periods that should be excluded from
+    processing. Those files wont be converted from raw files to netCDF files.
+
+    Args:
+        filename: Path and name of the logbook file.
+
+    Returns:
+        A numpy.ndarray with the time periods.
+    """
+    data = np.genfromtxt(
+        filename,
+        dtype=np.datetime64,
+        usecols=(0, 1),
+    )
+
+    if (np.diff(data) < np.timedelta64()).any():
+        msg = \
+            "The logbook '%s' contains invalid time periods. The start time "\
+            "must always be earlier than the end time.\nFound invalid time " \
+            "periods in (line numbers without header):\n" % filename
+
+        fraud_lines = np.diff(data).flatten() < np.timedelta64()
+        for line, line_is_fraud in enumerate(fraud_lines, 1):
+            if line_is_fraud:
+                msg += "\tLine %d\n" % line
+
+        logger.critical(msg)
+        exit()
+
+    # One line logbooks get a different array shape
+    if len(data.shape) == 1:
+        data.shape = (1, data.shape[0])
+
+    return data.astype("O")
+
+
+def load_mask(filename):
+    """Loads a mask file and returns it as a numpy array where the masked
+    values are False.
+
+    This method can handle ASCII or PNG files as masks.
+
+    Args:
+        filename: Path and name of the mask file
+
+    Returns:
+        numpy.array with w x h dimensions.
+    """
+
+    if filename is None:
+        return None
+
+    mask = None
+    if filename.endswith(".png"):
+        # read image
+        image = PIL.Image.open(filename, 'r')
+
+        # convert it to a grey scale image
+        mask = np.float32(np.array(image.convert('L')))
+        mask = np.flipud(mask)
+        mask = mask == 255
+    elif filename.endswith(".txt"):
+        # Count the number of columns in that mask file.
+        with open(filename, "r") as f:
+            num_columns = len(f.readline().split(","))
+
+        mask = np.genfromtxt(
+            filename,
+            delimiter=",",
+            skip_header=1,
+            usecols=list(range(1, num_columns))
+        )
+
+        mask = mask == 1
+
+    return mask
