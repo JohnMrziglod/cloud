@@ -131,14 +131,14 @@ def _cloud_parameters(movie):
     if not metadata.time.size:
         return None
 
-    # Interpolate the ground temperature from ship data. Note: Outside of
-    # the time coverage of the DShip data, the data will be extrapolated.
-    temperature = interp1d(
-        metadata["time"].data.astype("M8[s]").astype("int"),
-        metadata["air_temperature"].data, fill_value="extrapolate"
-    )
-
     try:
+        # Interpolate the ground temperature from ship data. Note: Outside of
+        # the time coverage of the DShip data, the data will be extrapolated.
+        temperature = interp1d(
+            metadata["time"].data.astype("M8[s]").astype("int"),
+            metadata["air_temperature"].data, fill_value="extrapolate"
+        )
+
         parameters = movie.cloud_parameters(
             temperature,
             [float(config["General"]["lapse_rate"]) * 2.,
