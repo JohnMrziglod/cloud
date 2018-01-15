@@ -3,24 +3,97 @@ from typhon.spareice.handlers import CSV
 
 __all__ = [
     "ShipMSM",
+    "ShipPS",
 ]
 
 
 class ShipMSM(CSV):
-    """ This class can read ship meta data files from the RV Maria S. Merian in
-    the CSV format.
+    """ This class can read ship meta data files (DShip) from the RV Maria S.
+    Merian in CSV format.
     """
 
     def __init__(self):
         # Call the base class initializer
         super(ShipMSM, self).__init__(
-            delimiter="\t",
-            header=1,
-            skip_header=1
+            read_csv={
+                "delimiter": "\t",
+                # This should be the column where the date time string is,
+                # in this case 0:
+                "parse_dates": {"time": [0]},
+                "index_col": 0,
+                # "header": 1,
+            },
+            return_type="xarray",
         )
 
-    def read(self, filename, fields=None):
+    def read(self, filename, fields=None, **read_csv):
+        """Read a file in CSV format coming from DShip of RV Maria S. Merian.
+
+        Args:
+            filename: Path and name of the file.
+            fields: Field that you want to extract from the file. If not given,
+                all fields are going to be extracted.
+            **read_csv: Additional keyword arguments for the pandas function
+                `pandas.read_csv`. See for more details:
+                https://pandas.pydata.org/pandas-docs/stable/generated/pandas.read_csv.html
+
+        Returns:
+            An ArrayGroup object.
+        """
         data = super(ShipMSM, self).read(filename, fields)
+
+        # Probably, these field names will change for each ship. So, look at
+        # one CSV file and try to find those fields to rename them here:
+        data.rename({
+            "Weatherstation.PDWDA.Air_pressure": "air_pressure",
+            "Weatherstation.PDWDA.Air_temperature": "air_temperature",
+            "Weatherstation.PDWDA.Humidity": "humidity",
+            "Weatherstation.PDWDA.Water_temperature": "water_temperature",
+        }, inplace=True)
+
+        # Filter out error values. The error values might be different for each
+        # ship. Adjust these lines then:
+        data = data.sel(
+            time=(data.air_temperature < 99) & (data.air_pressure > 500))
+
+        return data.sortby("time")
+
+
+# This is an example how to create another file reader:
+class ShipPS(CSV):
+    """ This class is a draft of a file handler for reading DShip data from the
+    RV Polarstern. This class has to be reviewed (and probably revised) before
+    using it.
+    """
+
+    def __init__(self):
+        # Call the base class initializer
+        super(ShipPS, self).__init__(
+            read_csv={
+                "delimiter": "\t",
+                # "header": 1,
+            },
+            return_type="xarray",
+        )
+
+    def read(self, filename, fields=None, **read_csv):
+        """Read a file in CSV format coming from DShip of RV Polarstern.
+
+        Args:
+            filename: Path and name of the file.
+            fields: Field that you want to extract from the file. If not given,
+                all fields are going to be extracted.
+            **read_csv: Additional keyword arguments for the pandas function
+                `pandas.read_csv`. See for more details:
+                https://pandas.pydata.org/pandas-docs/stable/generated/pandas.read_csv.html
+
+        Returns:
+            An ArrayGroup object.
+        """
+        data = super(ShipPS, self).read(filename, fields)
+
+        # Probably, these field names will change for each ship. So, look at
+        # one CSV file and try to find those fields to rename them here:
         data.rename({
             "Weatherstation.PDWDA.Air_pressure": "air_pressure",
             "Weatherstation.PDWDA.Air_temperature": "air_temperature",
@@ -32,9 +105,9 @@ class ShipMSM(CSV):
         )
         data.drop(("date time",))
 
-        # Filter out error values.
+        # Filter out error values. The error values might be different for each
+        # ship. Adjust these lines then:
         data = data[data["air_temperature"] < 99]
         data = data[data["air_pressure"] > 500]
 
         return data
-

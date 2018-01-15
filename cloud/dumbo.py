@@ -1,6 +1,9 @@
 from datetime import datetime
+import logging
+from time import time
 
 import numpy as np
+import pandas as pd
 from typhon.spareice.array import Array
 from typhon.spareice.handlers import FileHandler, FileInfo
 
@@ -29,15 +32,26 @@ class ThermalCamASCII(FileHandler):
             A FileInfo object.
         """
 
-        with open(filename, "r") as f:
-            timestamp = self._get_timestamp(f)
-
-            return FileInfo(filename, [timestamp, timestamp],)
+        timestamp = self._get_timestamp(filename)
+        return FileInfo(filename, [timestamp, timestamp],)
 
     @staticmethod
-    def _get_timestamp(file):
-        date_time = file.readline().rstrip('\n').split('\t')[1]
-        return datetime.strptime(date_time, "%d.%m.%Y %H:%M:%S")
+    def _get_timestamp(filename):
+        try:
+            with open(filename) as file:
+                # Reads the first line of the file and split it by the
+                # tabulator. Convert the second half into a datetime object and
+                # return it.
+                date_time = file.readline().rstrip('\n').split('\t')[1]
+                return datetime.strptime(date_time, "%d.%m.%Y %H:%M:%S")
+        except Exception:
+            logging.error(
+                "Tried to derive file timestamp from Dumbo raw file '%s'. "
+                "Check whether its first line has this pattern:"
+                "'{name-of-original-file}	DD.MM.YYYY hh:mm:ss'!" %
+                filename,
+                exc_info=True
+            )
 
     def read(self, filename, **kwargs):
         """
@@ -50,31 +64,20 @@ class ThermalCamASCII(FileHandler):
             A cloud.ThermalCamMovie object.
         """
 
-        with open(filename, "r") as f:
-            timestamp = self._get_timestamp(f)
+        dataframe = pd.read_csv(
+            filename, decimal=",", delimiter='\t',
+            # There are 384 columns but the first contains the index.
+            usecols=range(1, 385), dtype=float,
+            engine="c", header=1,
+        )
 
-            # Unfortunately, the ASCII files contain commas instead of points
-            # as decimal delimiter:
-            line_iterator = (
-                line.replace(',', '.').encode()
-                for line in f
-            )
+        timestamp = self._get_timestamp(filename)
+        movie = ThermalCamMovie()
 
-            data = np.genfromtxt(
-                line_iterator,
-                delimiter='\t',
-                dtype=float,
-                # We skipped already the first line in _get_timestamp, so only
-                # two header lines are left.
-                skip_header=2,
-            )
+        # We skip the first column since it only contains the row number.
+        movie["images"] = Array(
+            [dataframe.as_matrix()], dims=["time", "height", "width"]
+        )
+        movie["time"] = [timestamp]
 
-            movie = ThermalCamMovie()
-
-            # We skip the first column since it only contains the row number.
-            movie["images"] = Array(
-                [data[:, 1:]], dims=["time", "height", "width"]
-            )
-            movie["time"] = [timestamp]
-
-            return movie
+        return movie

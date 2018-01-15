@@ -22,9 +22,6 @@ import tarfile
 import cloud
 
 
-logger = logging.getLogger(__name__)
-
-
 def extract_raw_files(datasets, config, start, end, convert=False):
     """Extract the archive files from Pinocchio
 
@@ -41,7 +38,7 @@ def extract_raw_files(datasets, config, start, end, convert=False):
     """
 
     for archive in datasets["Pinocchio-archive"].find_files(start, end):
-        logger.info("Extract all files from %s" % archive.path)
+        logging.info("Extract all files from %s" % archive.path)
         archive_file = tarfile.open(archive, mode="r:gz")
         tmpdir = os.path.splitext(archive)[0]
         archive_file.extractall(path=tmpdir)
@@ -49,7 +46,7 @@ def extract_raw_files(datasets, config, start, end, convert=False):
         if convert:
             cloud.convert_raw_files(datasets, "Pinocchio", config, start, end)
 
-            logger.info("Delete extracted files.")
+            logging.info("Delete extracted files.")
             shutil.rmtree(tmpdir)
 
 
@@ -66,19 +63,19 @@ def get_cmd_line_parser():
 
     examples = """Examples:
     
-    > %(prog)s -xcs "2017-11-02" "2017-11-03"
+    > ./%(prog)s -xcs "2017-11-02" "2017-11-03"
     Recommended usage: the program extracts the raw files from the 2nd November
     2017 (only necessary for Pinocchio files), converts them to netCDF files 
     and calculates the cloud statistics. If [instrument][mask] is set to a 
     valid filename, a mask will be applied on all images.
     
-    > %(prog)s -xcs "2017-11-02 12:00:00" "2017-11-02 16:00:00"
+    > ./%(prog)s -xcs "2017-11-02 12:00:00" "2017-11-02 16:00:00"
     Same as above but processes only images recorded between 12 and 16 o'clock.
     
-    > %(prog)s -cs -i Dumbo "2017-11-02" "2017-11-03"
+    > ./%(prog)s -cs -i Dumbo "2017-11-02" "2017-11-03"
     Process all Dumbo files from the 2nd November 2017.
     
-    > %(prog)s -s "2017-11-02 12:00:00" "2017-11-02 16:00:00"
+    > ./%(prog)s -s "2017-11-02 12:00:00" "2017-11-02 16:00:00"
     Calculate the cloud statistics only (you need existing netCDF files that 
     you have converted earlier).
     """
@@ -132,7 +129,7 @@ def main():
         ["Statistics:", str(args.stats)],
     ]
 
-    logger.info("Script configuration:")
+    logging.info("Script configuration:")
     for i, action in enumerate(actions):
         print("    {:<15} {:<12}".format(*action))
 

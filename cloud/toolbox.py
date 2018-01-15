@@ -13,8 +13,8 @@ import os.path
 import numpy as np
 import PIL.Image
 import PIL.PngImagePlugin
-from typhon.spareice.datasets import Dataset, DatasetManager
-from typhon.spareice.handlers import FileHandler
+from typhon.spareice.datasets import Dataset, DatasetManager, NoFilesError
+from typhon.spareice.handlers import FileHandler, NetCDF4, Plot
 
 from cloud import dumbo, pinocchio, metadata, ThermalCamMovie
 
@@ -25,36 +25,27 @@ __all__ = [
     "load_datasets",
     "load_logbook",
     "load_mask",
+    "NoFilesError",
 ]
 
 
-logger = logging.getLogger(__name__)
-
-
-def configure_logger():
-    # Define the logger:
-    logging.config.dictConfig({
-        'version': 1,
-        'disable_existing_loggers': False,
-        'formatters': {
-            'standard': {
-                'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
-            },
+DEFAULT_LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'loggers': {
+        '': {
+            'level': 'INFO',
         },
-        'handlers': {
-            'default': {
-                'level': 'INFO',
-                'class': 'logging.StreamHandler',
-            },
+    },
+    'formatters': {
+        'default': {
+            'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
         },
-        'loggers': {
-            '': {
-                'handlers': ['default'],
-                'level': 'INFO',
-                'propagate': True
-            }
-        }
-    })
+    },
+}
+
+logging.config.dictConfig(DEFAULT_LOGGING)
+logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s')
 
 
 def get_standard_parser():
@@ -102,7 +93,7 @@ def init_toolbox(parser=None,):
         DatasetManager with loaded datasets.
     """
 
-    logger.info("Initialise cloud toolbox")
+    logging.info("Initialise cloud toolbox")
 
     if parser is None:
         parser = get_standard_parser()
@@ -158,7 +149,7 @@ def load_datasets(config):
     # Pinocchio - Datasets:
     datasets += Dataset(
         name="Pinocchio-netcdf",
-        files=os.path.join(
+        path=os.path.join(
             config["General"]["basedir"],
             config["Pinocchio"]["nc_files"],
         ),
@@ -170,7 +161,7 @@ def load_datasets(config):
     )
     datasets += Dataset(
         name="Pinocchio-archive",
-        files=os.path.join(basedir, config["Pinocchio"]["archive_files"]),
+        path=os.path.join(basedir, config["Pinocchio"]["archive_files"]),
         max_processes=int(config["General"]["processes"]),
     )
 
@@ -182,7 +173,7 @@ def load_datasets(config):
         )
     datasets += Dataset(
         name="Pinocchio-raw",
-        files=os.path.join(
+        path=os.path.join(
             config["General"]["basedir"],
             os.path.splitext(config["Pinocchio"]["archive_files"])[0],
             config["Pinocchio"]["files_in_archive"],
@@ -197,8 +188,9 @@ def load_datasets(config):
         exclude=logbook,
     )
     datasets += Dataset(
-        files=os.path.join(basedir, config["Pinocchio"]["stats"]),
+        path=os.path.join(basedir, config["Pinocchio"]["stats"]),
         name="Pinocchio-stats",
+        handler=NetCDF4(return_type="xarray"),
         max_processes=int(config["General"]["processes"]),
     )
     ###########################################################################
@@ -207,7 +199,7 @@ def load_datasets(config):
     # Dumbo - Datasets:
     datasets += Dataset(
         name="Dumbo-netcdf",
-        files=os.path.join(
+        path=os.path.join(
             config["General"]["basedir"],
             config["Dumbo"]["nc_files"],
         ),
@@ -227,53 +219,59 @@ def load_datasets(config):
 
     datasets += Dataset(
         name="Dumbo-raw",
-        files=os.path.join(
+        path=os.path.join(
             config["General"]["basedir"],
             config["Dumbo"]["raw_files"],
         ),
         handler=dumbo.ThermalCamASCII(),
         # Since the raw files have no temporal information in their filename,
-        # we have to retrieve it from their content.
-        time_coverage="content",
+        # we have to retrieve it from by their handler.
+        info_via="handler",
         max_processes=int(config["General"]["processes"]),
         exclude=logbook,
     )
     datasets += Dataset(
-        files=os.path.join(basedir, config["Dumbo"]["stats"]),
+        path=os.path.join(basedir, config["Dumbo"]["stats"]),
         name="Dumbo-stats",
+        handler=NetCDF4(return_type="xarray"),
         max_processes=int(config["General"]["processes"]),
     )
     ###########################################################################
 
     datasets += Dataset(
-        files=os.path.join(basedir, config["Ceilometer"]["files"]),
+        path=os.path.join(basedir, config["Ceilometer"]["files"]),
         name="Ceilometer",
+        # Each file covers roughly 24 hours:
+        time_coverage="24 hours",
+        handler=NetCDF4(return_type="xarray"),
         max_processes=int(config["General"]["processes"]),
     )
     datasets += Dataset(
-        files=os.path.join(basedir, config["DShip"]["files"]),
+        path=os.path.join(basedir, config["DShip"]["files"]),
         handler=metadata.ShipMSM(),
         name="DShip",
         max_processes=int(config["General"]["processes"]),
     )
     datasets += Dataset(
-        files=os.path.join(basedir, config["Plots"]["overview"]),
+        path=os.path.join(basedir, config["Plots"]["overview"]),
         name="plot-overview",
+        handler=Plot(),
         max_processes=int(config["General"]["processes"]),
     )
     datasets += Dataset(
-        files=os.path.join(basedir, config["Plots"]["comparison"]),
+        path=os.path.join(basedir, config["Plots"]["comparison"]),
         name="plot-comparison",
+        handler=Plot(),
         max_processes=int(config["General"]["processes"]),
     )
     datasets += Dataset(
-        files=os.path.join(basedir, config["Plots"]["anomaly"]),
+        path=os.path.join(basedir, config["Plots"]["anomaly"]),
         name="plot-anomaly",
+        handler=Plot(),
         max_processes=int(config["General"]["processes"]),
     )
 
     return datasets
-
 
 
 def load_logbook(filename):
@@ -305,7 +303,7 @@ def load_logbook(filename):
             if line_is_fraud:
                 msg += "\tLine %d\n" % line
 
-        logger.critical(msg)
+        logging.critical(msg)
         exit()
 
     # One line logbooks get a different array shape
