@@ -16,16 +16,17 @@ physics):
     pip install --user --editable .
     
 and you will need other python packages:
-* numpy
+* numpy >= 12.0
 * scipy
 * pandas
-* matplotlib
-* Pillow
-* netcdf4
+* xarray >= 0.10
+* matplotlib >= 2.0
+* netCDF4
+* \href{http://pillow.readthedocs.io/en/4.3.x/}{Pillow} >= 2.0
 
 You can install them via:
 
-    ﻿pip3 install --user numpy scipy pandas matplotlib netcdf4 Pillow
+    ﻿pip3 install --user numpy scipy pandas xarray matplotlib netcdf4 Pillow
     
 ## Documentation
 Please find further documentation in the [manual](manual/cloud-manual.pdf). A 

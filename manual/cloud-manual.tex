@@ -49,14 +49,15 @@ Send an e-mail to \href{mailto:john.mrziglod@mail.de}{john.mrziglod@mail.de} if 
 	\item numpy \textgreater= 12.0
 	\item scipy
 	\item pandas
+	\item xarray \textgreater= 0.10
 	\item matplotlib \textgreater= 2.0
 	\item netCDF4
 	\item \href{http://pillow.readthedocs.io/en/4.3.x/}{Pillow} \textgreater= 2.0
 	\item\href{https://github.com/atmtools/typhon}{typhon}
 \end{enumerate}
 
-To install the first six packages type this into your console:\footnote{The \$ sign does only indicate the start of a command line - do not enter it into your console.}\\
-\texttt{\$ pip3 install --user numpy scipy pandas matplotlib netcdf4 Pillow}\\
+To install the first seven packages type this into your console:\footnote{The \$ sign does only indicate the start of a command line - do not enter it into your console.}\\
+\texttt{\$ pip3 install --user numpy scipy pandas xarray matplotlib netcdf4 Pillow}\\
 
 typhon is a python package developed by the Radiation and Remote Sensing group of the Meteorological Institute of the University Hamburg. Since the required features for \cloud are only in the developer version at the moment, it has to be installed differently. Go to your favourite directory (wherever you want to put the typhon module) and type those lines into your console:\\
 \texttt{\$ git clone https://github.com/atmtools/typhon.git}\\
@@ -240,7 +241,9 @@ Now you can open the \texttt{build/html/index.html} file with your favourite bro
 \subsection{Code style and design}
 I tried following the \href{https://google.github.io/styleguide/pyguide.html}{Coding Style Guide by Google}  which is based on modern Python coding practices. The code is object oriented to make its structure better maintainable and extendable. If you are not familiar with object oriented programming, \href{https://www.youtube.com/watch?v=ZDa-Z5JzLYM}{here} is a good youtube video as an introduction.\\
 
-The files for each instrument are represented by \texttt{typhon.spareice.Dataset} objects (\href{http://radiativetransfer.org/misc/typhon/doc-trunk/tutorials/dataset.html}{link} to further documentation and tutorial). I developed those objects to make handling and processing of datasets with many files easier and faster. \texttt{typhon.spareice.Dataset} is still under development and may change its API and name in future. When those major changes come, I will contact you so that the \cloud toolbox can be developed and still benefit from typhon updates.
+The files for each instrument are represented by \texttt{typhon.spareice.Dataset} objects (\href{http://radiativetransfer.org/misc/typhon/doc-trunk/tutorials/dataset.html}{link} to further documentation and tutorial). I developed those objects to make handling and processing of datasets with many files easier and faster. \texttt{typhon.spareice.Dataset} is still under development and may change its API and name in future. When those major changes come, I will contact you so that the \cloud toolbox can be developed and still benefit from typhon updates.\\
+
+The classes \texttt{Movie} and \texttt{ThermalCamMovie} bases upon \texttt{ArrayGroup} (coming from \texttt{typhon.spareice.array}). While this works with a good performance, you may consider switching to use \href{https://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.html#pandas-dataframe}{pandas dataframe} or \href{http://xarray.pydata.org/en/stable/}{xarray} in future for having more features.
 
 %\subsection{Modules}
 %The scripts from section \ref{sec:scripts} mainly call functions from modules. If you want to develop the \cloud toolbox, you should modify the modules rather than the scripts. They are located in the \texttt{cloud} folder.
