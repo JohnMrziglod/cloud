@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Contains the classes for normal movies consisting of thermal cam images.
 
 Every thermal camera image will be converted to a ThermalCamMovie object by the
@@ -8,7 +9,7 @@ from collections import defaultdict
 import warnings
 
 import numpy as np
-from typhon.spareice.array import Array, ArrayGroup
+from typhon.spareice.array import Array, GroupedArrays
 
 
 __all__ = [
@@ -17,7 +18,7 @@ __all__ = [
 ]
 
 
-class Movie(ArrayGroup):
+class Movie(GroupedArrays):
     """A movie is a sequence of images and their timestamps.
     """
 
@@ -216,8 +217,7 @@ class ThermalCamMovie(Movie):
         return inhomogeneity
 
     def cloud_level_mask(self, t_surface, lapse_rate=None):
-        """Classifies each pixel according to its temperature to a height
-        level.
+        """Classify each pixel according to its temperature to a height level.
 
         The levels are:
             * Up to 2000m: Low clouds - class 1.
@@ -301,8 +301,8 @@ class ThermalCamMovie(Movie):
             levels: A list of different temperature thresholds
 
         Returns:
-            A dictionary with the values for the different parameters (
-            coverage, inhomogeneity, etc.)
+            An GroupedArrays (kind of a dictionary of numpy arrays) with the
+            values for the different parameters (coverage, inhomogeneity, etc.)
         """
 
         parameters = {
@@ -357,7 +357,8 @@ class ThermalCamMovie(Movie):
                 for parameter, func in parameters.items():
                     results[parameter].append(func[0]())
 
-        cloud_stats = ArrayGroup()
+        # Create an GroupedArrays with all parameters:
+        cloud_stats = GroupedArrays()
         cloud_stats["time"] = self["time"]
         cloud_stats["time"].dims = ["time"]
         for parameter, result in results.items():

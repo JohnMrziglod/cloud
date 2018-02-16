@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 """
 This script can create two types of plots:
@@ -43,10 +44,9 @@ def sample(dataset, config, start, end, fields=None):
             "fields": fields,
         }
 
-    data = xr.concat(
-        dataset.read_period(start, end, **reader_args),
-        dim="time",
-    )
+    data = dataset.collect(
+            start, end, read_args=reader_args, concat_args={"dim": "time"}
+        )
     data = data.sortby("time")
     data = data.sel(time=slice(start, end))
 
@@ -292,9 +292,11 @@ def plot_overview(datasets, config, start, end, ):
     fig.tight_layout()
 
     # Save the generated plot:
-    path = datasets["plot-overview"].generate_filename((start, end))
-    logging.info("Save plot to %s" % path)
-    datasets["plot-overview"].write(path, fig)
+    filename = datasets["plots"].generate_filename(
+        (start, end), fill={"plot": "overview"}
+    )
+    logging.info("Save plot to %s" % filename)
+    datasets["plots"].write(fig, filename, in_background=True)
 
 
 def plot_four_statistics(axes, data, config, instrument, add_labels=False):
@@ -319,10 +321,10 @@ def _prepare_parameters(data):
     """Prepare data parameters for plotting functions.
 
     Args:
-        data: An ArrayGroup data object.
+        data: An GroupedArrays data object.
 
     Returns:
-        None
+        The prepared data object
     """
     data["total_coverage"] = data["cloud_coverage"].sum(dim="level")
     del data["cloud_coverage"]
@@ -401,9 +403,11 @@ def plot_comparison(datasets, config, start, end, ptype):
     fig.legend(handles, labels, 'upper left')
 
     # Save the generated plot:
-    path = datasets["plot-comparison"].generate_filename((start, end))
-    logging.info("Save plot to %s" % path)
-    datasets["plot-comparison"].write(path, fig)
+    filename = datasets["plots"].generate_filename(
+        (start, end), fill={"plot": "comparison"}
+    )
+    logging.info("Save plot to %s" % filename)
+    datasets["plots"].write(fig, filename)
 
 
 def get_cmd_line_parser():

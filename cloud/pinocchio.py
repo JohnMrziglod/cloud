@@ -1,10 +1,7 @@
-import csv
 import datetime
-import glob
 
-import matplotlib.pyplot as plt
-from typhon.spareice.array import Array
-from typhon.spareice.handlers import FileHandler, FileInfo
+from typhon.spareice import Array, FileHandler, FileInfo
+from typhon.spareice.handlers import expects_file_info
 import numpy as np
 import PIL.Image
 from PIL.ExifTags import TAGS
@@ -13,9 +10,8 @@ from scipy.optimize import curve_fit
 from cloud import Movie, ThermalCamMovie
 
 __all__ = [
-    "create_calibration_file",
     "ThermalCam",
-    "WebCam"
+    #"WebCam"
 ]
 
 
@@ -50,153 +46,10 @@ def brightness_to_temperature(brightness, calibration_coefficients):
     return polynom_second(brightness, *calibration_coefficients)
 
 
-def create_calibration_file(calibration_images_path, temperature_file,
-                            calibration_file, mask, plot_file=None):
-    """Create a calibration file for the pinocchio thermal cam.
-
-    Warnings:
-        This is an old function that has not been updated since September 2017.
-        It does not work probably at the moment, but it should be simple to
-        rewrite it for using it again.
-
-    The created file is in CSV format and can be used as calibration for the
-    cloud.pinocchio.ThermalCam() file handler class.
-
-    Args:
-        calibration_images_path: A path to the directories which contain the
-            thermal cam images for each temperature. They should be named after
-            the first column in the file given by temperature_file.
-        temperature_file: A CSV file with two header lines and at least two
-            columns separated by semicolons. The first columns describes the
-            directory name where to find the image files (relative to
-            calibration_images_path). The second is the corresponding
-            temperature in the calibration (normally recorded by a KT19
-            pyranometer).
-        calibration_file: Name of the created output file.
-        mask: A numpy.mask that only shows the area where the calibration
-            target is.
-        plot_file: (optional) If this is given, a plot with the calibration
-            curve will be stored in this file.
-
-    Returns:
-        None
-
-    Examples:
-
-    .. :code-block::
-        :caption: ls pinocchio/calibration/images/
-
-        30/
-        28/
-        26/
-
-    .. :code-block::
-        :caption: temperature_file.csv
-
-        header line no. 1
-        header line no.2
-        30;29.6
-        28;28.1
-        26;25.9
-        ...
-
-    .. :code-block:: python
-        :caption: script.py
-
-        # Create the calibration file once
-        create_calibration_file(
-            "pinocchio/calibration/images/",
-            "temperature_file.csv",
-            "pixel_to_temperature.csv")
-
-        # Use it for converting pinocchio images:
-        pinocchio_handler = cloud.pinocchio.ThermalCam(
-            calibration_file="pixel_to_temperature.csv"
-        )
-    """
-
-    directory_temperature = dict()
-
-    with open(temperature_file, 'r') as file:
-        reader = csv.reader(file, delimiter=';')
-
-        # skip the header (two lines)
-        reader.__next__()
-        reader.__next__()
-
-        for row in reader:
-            directory_temperature[row[0]] = float(row[1])
-
-    pinocchio_handler = ThermalCam()
-
-    temperature_pixel = dict()
-
-    for directory, temperature in sorted(directory_temperature.items()):
-        files = glob.glob(calibration_images_path + directory + "/*")
-        values = np.ones(len(files))
-        for i, file in enumerate(files):
-            image = pinocchio_handler.read(file, convert_to_temperatures=False)
-            image.to_brightness()
-            image.apply_mask(mask)
-            # values[i] = data[data.shape[0]/2][data.shape[1]/2]
-            values[i] = np.nanmedian(image.data)
-        temperature_pixel[temperature] = np.nanmedian(values)
-
-    curve = True
-    if curve:
-        temperatures = np.asarray([k for k in sorted(temperature_pixel)])
-        pixels = np.asarray(
-            [temperature_pixel[k] for k in sorted(temperature_pixel)])
-        print(pixels, temperatures)
-        coeffs, _ = get_calibration(pixels, temperatures)
-        print(coeffs)
-
-        # Save the plot of the calibration curve:
-        if plot_file is not None:
-            plt.plot(
-                np.linspace(50, 255),
-                brightness_to_temperature(np.linspace(50, 255), coeffs), c="g")
-            plt.hold(True)
-            plt.plot(pixels, temperatures)
-            plt.ylabel("calibration temperature [°C]")
-            plt.xlabel("pixel brightness")
-            plt.title("Pinocchio calibration, 25th September 2017")
-            plt.grid()
-            plt.legend(["T = {:.4f} X**2 + {:.2f} X + {:.2f}".format(*coeffs), "calibration"], loc='upper left')
-            plt.savefig(plot_file)
-
-    else:
-
-        temperatures = np.asarray([k for k in sorted(temperature_pixel)])
-        pixels = np.asarray([temperature_pixel[k] for k in sorted(temperature_pixel)])
-        print(pixels, temperatures)
-
-        relation = np.poly1d(np.polyfit(pixels, temperatures, 1))
-
-        # Save the plot of the calibration curve:
-        if plot_file is not None:
-            plt.plot(np.linspace(50, 255), relation(np.linspace(50, 255)), c="g")
-            plt.hold(True)
-            plt.plot(pixels, temperatures)
-            plt.ylabel("calibration temperature [°C]")
-            plt.xlabel("pixel brightness")
-            plt.title("Pinocchio calibration, 5th September 2017")
-            plt.grid()
-            plt.legend(
-                ["T = {:.4f} * X + {:.2f}".format(*relation.coeffs), "calibration"], loc='upper left')
-            plt.savefig(plot_file)
-
-    # Save the calibration in a file:
-    with open(calibration_file, 'w') as file:
-        file.write("Pixel Value[0-255];Temperature[deg C]\n")
-        for temperature, pixel in sorted(temperature_pixel.items()):
-            file.write("{};{}\n".format(pixel, temperature))
-
-
 class ThermalCam(FileHandler):
     calibration_coefficients = None
 
-    def __init__(self, calibration_file=None, convert_to_temperatures=True,
+    def __init__(self, calibration_file=None, to_temperatures=True,
                  **kwargs):
         """ This class can read thermal cam images of the Pinocchio instrument.
 
@@ -212,9 +65,9 @@ class ThermalCam(FileHandler):
         # Call the base class initializer
         super(ThermalCam, self).__init__(**kwargs)
 
-        self.convert_to_temperatures = convert_to_temperatures
+        self.to_temperatures = to_temperatures
 
-        if self.convert_to_temperatures and calibration_file is None:
+        if self.to_temperatures and calibration_file is None:
                 raise ValueError(
                     "For converting to temperatures a calibration file is "
                     "needed! Look at the documentation of the parameter "
@@ -232,11 +85,12 @@ class ThermalCam(FileHandler):
             ThermalCam.calibration_coefficients, _ = \
                 get_calibration(data[:, 0], data[:, 1])
 
+    @expects_file_info()
     def get_info(self, filename, **kwargs):
         """Get the time coverage from a Pinocchio JPG image.
 
         Args:
-            filename: Path and name of file
+            filename: Path and name of file or FileInfo object.
 
         Returns:
             A FileInfo object.
@@ -254,18 +108,19 @@ class ThermalCam(FileHandler):
             [time, time],
         )
 
-    def read(self, filename, **kwargs):
+    @expects_file_info()
+    def read(self, file, **kwargs):
         """Read an JPG image and convert it to a cloud.ThermalCamMovie object.
 
         Args:
-            filename: Path and name of file
+            file: Path and name of file or FileInfo object.
 
         Returns:
             Either a cloud.ThermalCamMovie or a cloud.Movie object.
         """
 
         # read image
-        image = PIL.Image.open(filename, 'r')
+        image = PIL.Image.open(file.path, 'r')
 
         # Retrieve the time via EXIF tags
         name2tagnum = dict((name, num) for num, name in TAGS.items())
@@ -275,7 +130,7 @@ class ThermalCam(FileHandler):
             time_string = image._getexif()[name2tagnum["DateTimeOriginal"]]
             time = datetime.datetime.strptime(time_string, "%Y:%m:%d %H:%M:%S")
 
-        if self.convert_to_temperatures:
+        if self.to_temperatures:
             # convert it to a grey scale image
             data = np.float32(np.array(image.convert('L')))
             data = np.flipud(data)
@@ -294,7 +149,7 @@ class ThermalCam(FileHandler):
                 [data],
                 dims=["time", "height", "width"]
             )
-            movie["time"] = [time]
+            movie["time"] = [file.times[0]]
 
         return movie
 

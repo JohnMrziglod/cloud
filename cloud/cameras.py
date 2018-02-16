@@ -6,6 +6,7 @@ them. A second function can calculate the cloud statistics of those files.
 
 import logging
 import os.path
+from time import time
 
 import xarray as xr
 from scipy.interpolate import interp1d
@@ -18,25 +19,26 @@ __all__ = [
 ]
 
 
-def _join_movies(movies, mask):
-    """Small helper function to join short movies to one long movie.
+def _apply_mask(movie, files, mask):
+    """Small helper function to apply a mask onto a movie.
 
     Args:
-        movies: A list of cloud.ThermalCamMovie objects.
+        movie: A cloud.ThermalCamMovie object.
+        files: A list of FileInfo object with the opened files. This is
+            necessary if running it with Dataset.map().
         mask: A mask that should be applied on those movies
 
     Returns:
-        One movie out of *movies*.
+        One concatenated long movie out of *movies*.
     """
-    if not movies:
+
+    if not movie:
         return None
 
-    try:
-        # Connect all short movies (single images) to one movie:
-        movie = cloud.ThermalCamMovie.concatenate(movies)
-        start, end = movie.get_range("time")
-        logging.info("Joined %s to %s files to hourly bundle" % (start, end))
+    start, end = movie.get_range("time")
+    logging.info(f"Apply mask on images from {start} to {end}")
 
+    try:
         # Apply the mask on the movie
         if mask is not None:
             movie.apply_mask(mask)
@@ -81,9 +83,10 @@ def convert_raw_files(datasets, instrument, config, start, end,):
 
     # Convert all pinocchio files and join them to hourly netcdf files.
     # Apply also a mask if available.
-    datasets[instrument+"-raw"].map_content(
-        start, end, func=_join_movies,
-        func_arguments={
+    datasets[instrument+"-raw"].map(
+        start, end, func=_apply_mask,
+        on_content=True,
+        kwargs={
             "mask": mask,
         },
         # join files to hourly bundles
@@ -105,21 +108,24 @@ def _load_metadata(datasets, config_dict, start, end):
     logging.info(
         "Get air temperature from %s dataset" % config["General"]["metadata"])
 
-    all_metadata = xr.concat(
-        datasets[config["General"]["metadata"]].read_period(
-            start, end, reading_args={"fields": ["air_temperature"]}
-        ), dim="time",
+    # A list with a data object for each metadata file:
+    all_metadata = datasets[config["General"]["metadata"]].collect(
+        start, end, read_args={"fields": ["air_temperature"]},
     )
 
+    print(all_metadata)
 
-def _cloud_parameters(movie):
+
+def _cloud_parameters(movie, file):
     """Helper function for calculating cloud statistics.
 
     Args:
         movie: A ThermalCamMovie object that contains many thermal cam images.
+        file: A FileInfo object of the file to open. Is necessary to run it
+            with Dataset.map().
 
     Returns:
-        An ArrayGroup object with cloud parameters
+        An GroupedArrays object with cloud parameters
     """
     start, end = movie.get_range("time")
 
@@ -175,12 +181,12 @@ def calculate_cloud_statistics(datasets, instrument, config, start, end,):
 
     # Calculate the cloud parameters for each image and store them to this
     # dataset:
-    datasets[instrument+"-netcdf"].map_content(
-        start, end, _cloud_parameters,
-        output=datasets[instrument+"-stats"],
+    datasets[instrument+"-netcdf"].map(
+        start, end, func=_cloud_parameters,
+        on_content=True, output=datasets[instrument+"-stats"],
         # For classifying the clouds by their height, we need the air
         # temperature from a metadata dataset (usually DShip)
-        process_initializer=_load_metadata,
-        process_initargs=(datasets, config, start, end),
+        worker_initializer=_load_metadata,
+        worker_initargs=(datasets, config, start, end),
     )
 

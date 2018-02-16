@@ -64,6 +64,8 @@ typhon is a python package developed by the Radiation and Remote Sensing group o
 \texttt{\$ cd typhon}\\
 \texttt{\$ pip3 install --user --editable .}\\
 
+You get here the documentation for the recent version: \url{http://radiativetransfer.org/misc/typhon/doc-trunk/index.html}.
+
 \subsection{Get the \cloud toolbox}
 You can get the \cloud toolbox via this command (run it where you want to have \cloud toolbox):\\
 \texttt{\$ git clone https://github.com/JohnMrziglod/cloud.git}\\
@@ -243,7 +245,7 @@ I tried following the \href{https://google.github.io/styleguide/pyguide.html}{Co
 
 The files for each instrument are represented by \texttt{typhon.spareice.Dataset} objects (\href{http://radiativetransfer.org/misc/typhon/doc-trunk/tutorials/dataset.html}{link} to further documentation and tutorial). I developed those objects to make handling and processing of datasets with many files easier and faster. \texttt{typhon.spareice.Dataset} is still under development and may change its API and name in future. When those major changes come, I will contact you so that the \cloud toolbox can be developed and still benefit from typhon updates.\\
 
-The classes \texttt{Movie} and \texttt{ThermalCamMovie} bases upon \texttt{ArrayGroup} (coming from \texttt{typhon.spareice.array}). While this works with a good performance, you may consider switching to use \href{https://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.html#pandas-dataframe}{pandas dataframe} or \href{http://xarray.pydata.org/en/stable/}{xarray} in future for having more features.
+The classes \texttt{Movie} and \texttt{ThermalCamMovie} base upon \texttt{GroupedArrays} (coming from \texttt{typhon.spareice.array}). While this works with a good performance, you may consider switching to use \href{https://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.html#pandas-dataframe}{pandas dataframe} or \href{http://xarray.pydata.org/en/stable/}{xarray} in future for having more features.
 
 %\subsection{Modules}
 %The scripts from section \ref{sec:scripts} mainly call functions from modules. If you want to develop the \cloud toolbox, you should modify the modules rather than the scripts. They are located in the \texttt{cloud} folder.

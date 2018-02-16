@@ -14,7 +14,7 @@ import numpy as np
 import PIL.Image
 import PIL.PngImagePlugin
 from typhon.spareice.datasets import Dataset, DatasetManager, NoFilesError
-from typhon.spareice.handlers import FileHandler, NetCDF4, Plot
+from typhon.spareice.handlers import FileHandler, NetCDF4, Plotter
 
 from cloud import dumbo, pinocchio, metadata, ThermalCamMovie
 
@@ -165,7 +165,8 @@ def load_datasets(config):
         max_processes=int(config["General"]["processes"]),
     )
 
-    # Load logbook from Pinocchio:
+    # Load logbook from Pinocchio. This logbook contains time intervals where
+    # the data is corrupted or bad.
     logbook = None
     if "logbook" in config["Pinocchio"]:
         logbook = load_logbook(
@@ -185,6 +186,7 @@ def load_datasets(config):
             )
         ),
         max_processes=int(config["General"]["processes"]),
+        # Exclude the time intervals from the logbook when searching for files:
         exclude=logbook,
     )
     datasets += Dataset(
@@ -228,6 +230,7 @@ def load_datasets(config):
         # we have to retrieve it from by their handler.
         info_via="handler",
         max_processes=int(config["General"]["processes"]),
+        # Exclude the time intervals from the logbook when searching for files:
         exclude=logbook,
     )
     datasets += Dataset(
@@ -245,29 +248,19 @@ def load_datasets(config):
         time_coverage="24 hours",
         handler=NetCDF4(return_type="xarray"),
         max_processes=int(config["General"]["processes"]),
+        concat_args={"dim": "time"},
     )
     datasets += Dataset(
         path=os.path.join(basedir, config["DShip"]["files"]),
         handler=metadata.ShipMSM(),
         name="DShip",
         max_processes=int(config["General"]["processes"]),
+        concat_args={"dim": "time"},
     )
     datasets += Dataset(
-        path=os.path.join(basedir, config["Plots"]["overview"]),
-        name="plot-overview",
-        handler=Plot(),
-        max_processes=int(config["General"]["processes"]),
-    )
-    datasets += Dataset(
-        path=os.path.join(basedir, config["Plots"]["comparison"]),
-        name="plot-comparison",
-        handler=Plot(),
-        max_processes=int(config["General"]["processes"]),
-    )
-    datasets += Dataset(
-        path=os.path.join(basedir, config["Plots"]["anomaly"]),
-        name="plot-anomaly",
-        handler=Plot(),
+        path=os.path.join(basedir, config["Plots"]["files"]),
+        name="plots",
+        handler=Plotter(),
         max_processes=int(config["General"]["processes"]),
     )
 

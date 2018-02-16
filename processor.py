@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 """
 This script does a part of the whole workflow for Pinocchio or Dumbo data,
@@ -37,7 +38,7 @@ def extract_raw_files(datasets, config, start, end, convert=False):
         None
     """
 
-    for archive in datasets["Pinocchio-archive"].find_files(start, end):
+    for archive in datasets["Pinocchio-archive"].find(start, end):
         logging.info("Extract all files from %s" % archive.path)
         archive_file = tarfile.open(archive, mode="r:gz")
         tmpdir = os.path.splitext(archive)[0]

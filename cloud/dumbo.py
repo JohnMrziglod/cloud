@@ -1,11 +1,9 @@
 from datetime import datetime
 import logging
-from time import time
 
-import numpy as np
 import pandas as pd
-from typhon.spareice.array import Array
-from typhon.spareice.handlers import FileHandler, FileInfo
+from typhon.spareice import Array, FileHandler, FileInfo
+from typhon.spareice.handlers import expects_file_info
 
 from cloud import ThermalCamMovie
 
@@ -22,18 +20,19 @@ class ThermalCamASCII(FileHandler):
         # Call the base class initializer
         super(ThermalCamASCII, self).__init__(**kwargs)
 
+    @expects_file_info()
     def get_info(self, filename, **kwargs):
         """ Get info parameters from a file (time coverage, etc).
 
         Args:
-            filename: Name of the file.
+            filename: Path and name of file or FileInfo object.
 
         Returns:
             A FileInfo object.
         """
 
         timestamp = self._get_timestamp(filename)
-        return FileInfo(filename, [timestamp, timestamp],)
+        return FileInfo(filename.path, [timestamp, timestamp],)
 
     @staticmethod
     def _get_timestamp(filename):
@@ -53,19 +52,20 @@ class ThermalCamASCII(FileHandler):
                 exc_info=True
             )
 
+    @expects_file_info()
     def read(self, filename, **kwargs):
         """
         Loads an ASCII file and converts it to cloud.ThermalCamMovie object.
 
         Args:
-            filename: Path and name of the file
+            filename: Path and name of file or FileInfo object.
 
         Returns:
             A cloud.ThermalCamMovie object.
         """
 
         dataframe = pd.read_csv(
-            filename, decimal=",", delimiter='\t',
+            filename.path, decimal=",", delimiter='\t',
             # There are 384 columns but the first contains the index.
             usecols=range(1, 385), dtype=float,
             engine="c", header=1,

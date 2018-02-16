@@ -1,5 +1,5 @@
 import pandas as pd
-from typhon.spareice.handlers import CSV
+from typhon.spareice.handlers import CSV, expects_file_info
 
 __all__ = [
     "ShipMSM",
@@ -26,11 +26,12 @@ class ShipMSM(CSV):
             return_type="xarray",
         )
 
+    @expects_file_info()
     def read(self, filename, fields=None, **read_csv):
         """Read a file in CSV format coming from DShip of RV Maria S. Merian.
 
         Args:
-            filename: Path and name of the file.
+            filename: Path and name of file or FileInfo object.
             fields: Field that you want to extract from the file. If not given,
                 all fields are going to be extracted.
             **read_csv: Additional keyword arguments for the pandas function
@@ -38,7 +39,7 @@ class ShipMSM(CSV):
                 https://pandas.pydata.org/pandas-docs/stable/generated/pandas.read_csv.html
 
         Returns:
-            An ArrayGroup object.
+            An GroupedArrays object.
         """
         data = super(ShipMSM, self).read(filename, fields)
 
@@ -76,6 +77,7 @@ class ShipPS(CSV):
             return_type="xarray",
         )
 
+    expects_file_info
     def read(self, filename, fields=None, **read_csv):
         """Read a file in CSV format coming from DShip of RV Polarstern.
 
@@ -88,7 +90,7 @@ class ShipPS(CSV):
                 https://pandas.pydata.org/pandas-docs/stable/generated/pandas.read_csv.html
 
         Returns:
-            An ArrayGroup object.
+            An GroupedArrays object.
         """
         data = super(ShipPS, self).read(filename, fields)
 
