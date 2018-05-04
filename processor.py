@@ -23,11 +23,11 @@ import tarfile
 import cloud
 
 
-def extract_raw_files(datasets, config, start, end, convert=False):
+def extract_raw_files(filesets, config, start, end, convert=False):
     """Extract the archive files from Pinocchio
 
     Args:
-        datasets: A DatasetManager object.
+        filesets: A DatasetManager object.
         config: A dictionary-like object with configuration keys.
         start: Start time as string.
         end: End time as string.
@@ -38,14 +38,14 @@ def extract_raw_files(datasets, config, start, end, convert=False):
         None
     """
 
-    for archive in datasets["Pinocchio-archive"].find(start, end):
+    for archive in filesets["Pinocchio-archive"].find(start, end):
         logging.info("Extract all files from %s" % archive.path)
         archive_file = tarfile.open(archive, mode="r:gz")
         tmpdir = os.path.splitext(archive)[0]
         archive_file.extractall(path=tmpdir)
 
         if convert:
-            cloud.convert_raw_files(datasets, "Pinocchio", config, start, end)
+            cloud.convert_raw_files(filesets, "Pinocchio", config, start, end)
 
             logging.info("Delete extracted files.")
             shutil.rmtree(tmpdir)
@@ -117,7 +117,7 @@ def get_cmd_line_parser():
 def main():
     # Parse all command line arguments and load the config file and the
     # datasets:
-    config, args, datasets = cloud.init_toolbox(
+    config, args, filesets = cloud.init_toolbox(
         get_cmd_line_parser()
     )
 
@@ -135,14 +135,16 @@ def main():
         print("    {:<15} {:<12}".format(*action))
 
     if args.extract and args.instrument == "Pinocchio":
-        extract_raw_files(datasets, config, args.start, args.end, args.convert)
+        extract_raw_files(filesets, config, args.start, args.end, args.convert)
     elif args.convert:
         cloud.convert_raw_files(
-            datasets, args.instrument, config, args.start, args.end)
+            filesets, args.instrument, config, args.start, args.end
+        )
 
     if args.stats:
         cloud.calculate_cloud_statistics(
-            datasets, args.instrument, config, args.start, args.end)
+            filesets, args.instrument, config, args.start, args.end
+        )
 
 
 if __name__ == "__main__":

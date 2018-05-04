@@ -43,7 +43,26 @@ Send an e-mail to \href{mailto:john.mrziglod@mail.de}{john.mrziglod@mail.de} if 
 
 \section{Setup the \cloud toolbox}
 \label{sec:setup}
+\subsection{Install anaconda}
+The recommend way to install and use the toolbox is to run it via \href{https://www.anaconda.com}{anaconda}. Anaconda provides an environment with pre-compiled modules to run python scripts. You can install it everywhere, even without any root permissions. 
+
+To download anaconda on linux machine, type this into your console:\footnote{The \$ sign does only indicate the start of a command line - do not enter it into your console.}\\
+\texttt{\$ wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86\_64.sh -O miniconda.sh;}\\
+
+After downloading, you can install it into your home directory with this statement:\\
+\texttt{\$ bash miniconda.sh -b -p \$HOME/miniconda}\\
+
+Add this line to your \texttt{.bashrc} file in your home directory:\\
+\texttt{export PATH="\$HOME/miniconda/bin:\$PATH"}
+
+Simply run this command in your home directory and you can use anaconda on your machine:\\
+\texttt{source .bashrc}
+
 \subsection{Install dependencies}
+
+Anaconda provides a very convenient way to install python modules. The command is\\
+\texttt{\$ conda install MODULE1 MODULE2 ....}\\
+
 \cloud requires python 3.6 or higher and the following packages:
 \begin{enumerate}
 	\item numpy \textgreater= 12.0
@@ -56,15 +75,15 @@ Send an e-mail to \href{mailto:john.mrziglod@mail.de}{john.mrziglod@mail.de} if 
 	\item\href{https://github.com/atmtools/typhon}{typhon}
 \end{enumerate}
 
-To install the first seven packages type this into your console:\footnote{The \$ sign does only indicate the start of a command line - do not enter it into your console.}\\
-\texttt{\$ pip3 install --user numpy scipy pandas xarray matplotlib netcdf4 Pillow}\\
+We are going to install the first seven packages via anaconda:\\
+\texttt{\$ conda install numpy scipy pandas xarray matplotlib netcdf4 Pillow}\\
 
 typhon is a python package developed by the Radiation and Remote Sensing group of the Meteorological Institute of the University Hamburg. Since the required features for \cloud are only in the developer version at the moment, it has to be installed differently. Go to your favourite directory (wherever you want to put the typhon module) and type those lines into your console:\\
 \texttt{\$ git clone https://github.com/atmtools/typhon.git}\\
 \texttt{\$ cd typhon}\\
 \texttt{\$ pip3 install --user --editable .}\\
 
-You get here the documentation for the recent version: \url{http://radiativetransfer.org/misc/typhon/doc-trunk/index.html}.
+You get here the documentation for the most recent version: \url{http://radiativetransfer.org/misc/typhon/doc-trunk/index.html}.
 
 \subsection{Get the \cloud toolbox}
 You can get the \cloud toolbox via this command (run it where you want to have \cloud toolbox):\\
@@ -145,7 +164,13 @@ If one works on the instruments during measuring, some images might be falsified
 
 \section{Usage \& Workflow}
 \label{sec:usage-workflow}
-Before running any scripts you should check whether all configuration keys in \texttt{config.ini} are correctly set and whether the paths point to existing files (unless they are for files that are going to be created). I recommend to put all data from the instruments into one folder with subdirectories. You can then use the configuration key \config{General}{basedir} to point to that folder. Make sure that the scripts that you want to run have executive permissions.\footnote{If not, you may run \texttt{\$ chmod 744 script\_name.py} first.} Afterwards you can follow this workflow:
+Before running any scripts you should check whether all configuration keys in \texttt{config.ini} are correctly set and whether the paths point to existing files (unless they are for files that are going to be created). I recommend to put all data from the instruments into one folder with subdirectories (see figure \ref{fig:directory-structure}). You can then use the configuration key \config{General}{basedir} to point to that folder. Make sure that the scripts that you want to run have executive permissions.\footnote{If not, you may run \texttt{\$ chmod 744 script\_name.py} first.} Afterwards you can follow this workflow:
+\begin{figure}
+	\centering
+  	\includegraphics[scale=1]{figures/recommended_structure.png}
+  	\caption{The recommended directory structure for \cloud. Set the \config{General}{basedir} configuration key to the \texttt{CRUISE} folder and make the other folder paths relative.}
+  	\label{fig:directory-structure}
+\end{figure}
 
 \begin{enumerate}
 	\item \textbf{Copy the new data to their locations:} After recording, copy the data from the cameras and other instruments to the locations that you have set in the configuration file. Pinocchio images should be saved in tarball archives as JPG files, Dumbo images as ASCII files in unzipped folders. The Ceilometer data should be in netCDF format and the DShip data in CSV files.

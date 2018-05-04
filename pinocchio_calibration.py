@@ -16,7 +16,7 @@ from collections import defaultdict
 from os.path import join
 
 import numpy as np
-from typhon.spareice import Dataset
+from typhon.files import FileSet
 
 import cloud.pinocchio
 
@@ -185,13 +185,15 @@ def main():
     images_path = join(args.root_dir,
                 "{temperature}/m{year2}{month}{day}{hour}{minute}{second}*.jpg"
                 )
-    images = Dataset(
+    images = FileSet(
         path=images_path,
         handler=cloud.pinocchio.ThermalCam(to_temperatures=False),
         name="Calibration Images",
     )
 
-    # Create the calibration mask:
+    # Create the calibration mask. Only a small part of the image will show the
+    # the correct pixel values for the corresponding temperature. The rest will
+    # not see the calibration target.
     calibration_mask = np.zeros((252, 336))
     calibration_mask[115:130, 160:180] = 1
     calibration_mask = calibration_mask.astype("bool")

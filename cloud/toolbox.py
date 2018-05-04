@@ -13,19 +13,19 @@ import os.path
 import numpy as np
 import PIL.Image
 import PIL.PngImagePlugin
-from typhon.spareice.datasets import Dataset, DatasetManager, NoFilesError
-from typhon.spareice.handlers import FileHandler, NetCDF4, Plotter
+from typhon.files import FileSet, FileSetManager
+from typhon.files import Plotter
 
-from cloud import dumbo, pinocchio, metadata, ThermalCamMovie
+from cloud import dumbo, pinocchio, metadata
 
 __all__ = [
+    "DEFAULT_PARAM",
     "get_standard_parser",
     "init_toolbox",
     "load_config",
-    "load_datasets",
+    "load_filesets",
     "load_logbook",
     "load_mask",
-    "NoFilesError",
 ]
 
 
@@ -46,6 +46,12 @@ DEFAULT_LOGGING = {
 
 logging.config.dictConfig(DEFAULT_LOGGING)
 logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s')
+
+DEFAULT_PARAM = {
+    "start": None,
+    "end": None,
+    "config": "config.ini",
+}
 
 
 def get_standard_parser():
@@ -79,10 +85,10 @@ def get_standard_parser():
 
 
 def init_toolbox(parser=None,):
-    """Load all configurations, parse the command line args and load datasets.
+    """Load all configurations, parse the command line args and load filesets.
 
     Load the configurations from the config file, parse the command line
-    options and load all datasets (incl. logbook).
+    options and load all filesets (incl. logbook).
 
     Args:
         parser: An argparse object for parsing command line options. If not
@@ -90,7 +96,7 @@ def init_toolbox(parser=None,):
 
     Returns:
         A tuple of a config dictionary, the parsed arguments and a
-        DatasetManager with loaded datasets.
+        FileSetManager with loaded filesets.
     """
 
     logging.info("Initialise cloud toolbox")
@@ -107,13 +113,13 @@ def init_toolbox(parser=None,):
     if args.end is None:
         args.end = config["General"]["end"]
 
-    # Load all relevant datasets:
-    datasets = load_datasets(config)
+    # Load all relevant filesets:
+    filesets = load_filesets(config)
 
-    return config, args, datasets
+    return config, args, filesets
 
 
-def load_config(filename):
+def load_config(filename=None):
     """Load the config dictionary from a file.
 
     Args:
@@ -123,6 +129,9 @@ def load_config(filename):
         A configparser.Namespace object (you can handle it like a dictionary).
     """
 
+    if filename is None:
+        filename = DEFAULT_PARAM["config"]
+
     # Import the configuration file:
     config = ConfigParser()
     config.read(filename)
@@ -130,36 +139,32 @@ def load_config(filename):
     return config
 
 
-def load_datasets(config):
-    """Load all datasets into one DatasetManager object
+def load_filesets(config):
+    """Load all filesets into one FileSetManager object
 
     Args:
         config: Dictionary with configuration keys and values.
 
     Returns:
-        A DatasetManager object.
+        A FileSetManager object.
     """
 
     basedir = config["General"]["basedir"]
 
-    # This DatasetManager can handle all dataset objects:
-    datasets = DatasetManager()
+    # This FileSetManager can handle all dataset objects:
+    filesets = FileSetManager()
 
     ###########################################################################
-    # Pinocchio - Datasets:
-    datasets += Dataset(
+    # Pinocchio - FileSets:
+    filesets += FileSet(
         name="Pinocchio-netcdf",
         path=os.path.join(
             config["General"]["basedir"],
             config["Pinocchio"]["nc_files"],
         ),
-        handler=FileHandler(
-            reader=ThermalCamMovie.from_netcdf,
-            writer=ThermalCamMovie.to_netcdf,
-        ),
         max_processes=int(config["General"]["processes"]),
     )
-    datasets += Dataset(
+    filesets += FileSet(
         name="Pinocchio-archive",
         path=os.path.join(basedir, config["Pinocchio"]["archive_files"]),
         max_processes=int(config["General"]["processes"]),
@@ -172,42 +177,41 @@ def load_datasets(config):
         logbook = load_logbook(
             os.path.join(basedir, config["Pinocchio"]["logbook"])
         )
-    datasets += Dataset(
+
+    pinocchio_calibration = os.path.join(
+        config["General"]["basedir"],
+        config["Pinocchio"]["calibration"],
+    )
+    filesets += FileSet(
         name="Pinocchio-raw",
         path=os.path.join(
             config["General"]["basedir"],
             os.path.splitext(config["Pinocchio"]["archive_files"])[0],
             config["Pinocchio"]["files_in_archive"],
         ),
+        # Set the pinocchio file handler with the calibration file
         handler=pinocchio.ThermalCam(
-            os.path.join(
-                config["General"]["basedir"],
-                config["Pinocchio"]["calibration"],
-            )
+            calibration_file=pinocchio_calibration
         ),
         max_processes=int(config["General"]["processes"]),
         # Exclude the time intervals from the logbook when searching for files:
         exclude=logbook,
     )
-    datasets += Dataset(
+
+    filesets += FileSet(
         path=os.path.join(basedir, config["Pinocchio"]["stats"]),
         name="Pinocchio-stats",
-        handler=NetCDF4(return_type="xarray"),
         max_processes=int(config["General"]["processes"]),
     )
     ###########################################################################
 
     ###########################################################################
-    # Dumbo - Datasets:
-    datasets += Dataset(
+    # Dumbo - FileSets:
+    filesets += FileSet(
         name="Dumbo-netcdf",
         path=os.path.join(
             config["General"]["basedir"],
             config["Dumbo"]["nc_files"],
-        ),
-        handler=FileHandler(
-            reader=ThermalCamMovie.from_netcdf,
-            writer=ThermalCamMovie.to_netcdf,
         ),
         max_processes=int(config["General"]["processes"]),
     )
@@ -219,7 +223,7 @@ def load_datasets(config):
             os.path.join(basedir, config["Dumbo"]["logbook"])
         )
 
-    datasets += Dataset(
+    filesets += FileSet(
         name="Dumbo-raw",
         path=os.path.join(
             config["General"]["basedir"],
@@ -233,38 +237,34 @@ def load_datasets(config):
         # Exclude the time intervals from the logbook when searching for files:
         exclude=logbook,
     )
-    datasets += Dataset(
+    filesets += FileSet(
         path=os.path.join(basedir, config["Dumbo"]["stats"]),
         name="Dumbo-stats",
-        handler=NetCDF4(return_type="xarray"),
         max_processes=int(config["General"]["processes"]),
     )
     ###########################################################################
 
-    datasets += Dataset(
+    filesets += FileSet(
         path=os.path.join(basedir, config["Ceilometer"]["files"]),
         name="Ceilometer",
         # Each file covers roughly 24 hours:
         time_coverage="24 hours",
-        handler=NetCDF4(return_type="xarray"),
         max_processes=int(config["General"]["processes"]),
-        concat_args={"dim": "time"},
     )
-    datasets += Dataset(
+    filesets += FileSet(
         path=os.path.join(basedir, config["DShip"]["files"]),
         handler=metadata.ShipMSM(),
         name="DShip",
         max_processes=int(config["General"]["processes"]),
-        concat_args={"dim": "time"},
     )
-    datasets += Dataset(
+    filesets += FileSet(
         path=os.path.join(basedir, config["Plots"]["files"]),
         name="plots",
         handler=Plotter(),
         max_processes=int(config["General"]["processes"]),
     )
 
-    return datasets
+    return filesets
 
 
 def load_logbook(filename):

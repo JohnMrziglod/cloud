@@ -18,17 +18,18 @@ import warnings
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from typhon.files import NoFilesError
 import xarray as xr
 
 import cloud
 
 
-def sample(dataset, config, start, end, fields=None):
+def sample(fileset, config, start, end, fields=None):
     """Helper function to get a sample from the data and change its time
     resolution.
 
     Args:
-        dataset: A Dataset object.
+        fileset: A FileSet object.
         config: A dictionary-like object with configuration keys.
         start: Start time of the plot
         end: End time of the plot
@@ -44,11 +45,14 @@ def sample(dataset, config, start, end, fields=None):
             "fields": fields,
         }
 
-    data = dataset.collect(
-            start, end, read_args=reader_args, concat_args={"dim": "time"}
-        )
+    data = xr.concat(fileset.collect(
+        start, end, read_args=reader_args
+    ), dim="time")
     data = data.sortby("time")
+    print(data)
     data = data.sel(time=slice(start, end))
+
+    print(start, end)
 
     if (end - start) > pd.Timedelta("7 days"):
         new_resolution = config["Plots"]["weekly_plots_average"]
@@ -57,25 +61,25 @@ def sample(dataset, config, start, end, fields=None):
     else:
         new_resolution = config["Plots"]["hourly_plots_average"]
 
-    data = data.resample(new_resolution, "time")
+    data = data.resample(new_resolution, dim="time")
     # data["time"] = data["time"].astype(datetime)
     return data
 
 
-def plot_temperature(ax, start, end, datasets, config):
+def plot_temperature(ax, start, end, filesets, config):
     """Plot temperature data on matplotlib axis.
 
     Args:
         ax: A matplotlib.axis object.
         start: Start time as string.
         end: End time as string.
-        datasets: A DatasetManager object.
+        filesets: A DatasetManager object.
         config: A dictionary-like object with configuration keys.
 
     Returns:
         None
     """
-    data = sample(datasets[config["General"]["metadata"]], config, start, end)
+    data = sample(filesets[config["General"]["metadata"]], config, start, end)
     point_size = int(config["Plots"]["point_size"])
 
     ax.scatter(
@@ -89,20 +93,20 @@ def plot_temperature(ax, start, end, datasets, config):
     ax.set_ylabel("Temperature")
 
 
-def plot_pressure(ax, start, end, datasets, config):
+def plot_pressure(ax, start, end, filesets, config):
     """Plot DShip data on matplotlib axis.
 
     Args:
         ax: A matplotlib.axis object.
         start: Start time as string.
         end: End time as string.
-        datasets: A DatasetManager object.
+        filesets: A DatasetManager object.
         config: A dictionary-like object with configuration keys.
 
     Returns:
         None
     """
-    data = sample(datasets[config["General"]["metadata"]], config, start, end)
+    data = sample(filesets[config["General"]["metadata"]], config, start, end)
     point_size = int(config["Plots"]["point_size"])
 
     ax.scatter(
@@ -113,20 +117,20 @@ def plot_pressure(ax, start, end, datasets, config):
     ax.set_ylabel("Pressure")
 
 
-def plot_humidity(ax, start, end, datasets, config):
+def plot_humidity(ax, start, end, filesets, config):
     """Plot DShip data on matplotlib axis.
 
     Args:
         ax: A matplotlib.axis object.
         start: Start time as string.
         end: End time as string.
-        datasets: A DatasetManager object.
+        filesets: A DatasetManager object.
         config: A dictionary-like object with configuration keys.
 
     Returns:
         None
     """
-    data = sample(datasets[config["General"]["metadata"]], config, start, end)
+    data = sample(filesets[config["General"]["metadata"]], config, start, end)
     point_size = int(config["Plots"]["point_size"])
 
     ax.scatter(
@@ -137,20 +141,20 @@ def plot_humidity(ax, start, end, datasets, config):
     ax.set_ylabel("Humidity")
 
 
-def plot_cloud_coverage(ax, start, end, datasets, config, instrument):
+def plot_cloud_coverage(ax, start, end, filesets, config, instrument):
     """Plot cloud coverage data on matplotlib axis.
 
     Args:
         ax: A matplotlib.axis object.
         start: Start time as string.
         end: End time as string.
-        datasets: A DatasetManager object.
+        filesets: A DatasetManager object.
         config: A dictionary-like object with configuration keys.
 
     Returns:
         None
     """
-    data = sample(datasets[instrument+"-stats"], config, start, end)
+    data = sample(filesets[instrument+"-stats"], config, start, end)
     point_size = int(config["Plots"]["point_size"])
 
     ax.scatter(
@@ -197,21 +201,21 @@ def plot_pinocchio(*args):
     plot_cloud_coverage(*args, "Pinocchio")
 
 
-def plot_ceilometer(ax, start, end, datasets, config):
+def plot_ceilometer(ax, start, end, filesets, config):
     """Plot ceilometer plot on matplotlib axis.
 
     Args:
         ax: A matplotlib.axis object.
         start: Start time as string.
         end: End time as string.
-        datasets: A DatasetManager object.
+        filesets: A DatasetManager object.
         config: A dictionary-like object with configuration keys.
 
     Returns:
         None
     """
 
-    data = sample(datasets["Ceilometer"], config, start, end,
+    data = sample(filesets["Ceilometer"], config, start, end,
                   fields=["cbh", "time"],)
     point_size = int(config["Plots"]["point_size"])
 
@@ -235,11 +239,11 @@ def plot_ceilometer(ax, start, end, datasets, config):
     ax.set_title("Ceilometer")
 
 
-def plot_overview(datasets, config, start, end, ):
-    """Create overview plot.
+def plot_overview(filesets, config, start, end, ):
+    """Create overview plot
 
     Args:
-        datasets: A DatasetManager object.
+        filesets: A FileSetManager object.
         config: A dictionary-like object with configuration keys.
         start: Start time as string.
         end: End time as string.
@@ -270,9 +274,9 @@ def plot_overview(datasets, config, start, end, ):
         # Even if some error is raised during plotting we do not want it to
         # abort the whole script:
         try:
-            plot_func(axes[i], start, end, datasets, config)
+            plot_func(axes[i], start, end, filesets, config)
             no_data = False
-        except cloud.NoFilesError as err:
+        except NoFilesError as err:
             logging.warning(str(err))
         except Exception:
             logging.error("Could not create %s plot:" % name, exc_info=True)
@@ -282,8 +286,9 @@ def plot_overview(datasets, config, start, end, ):
         logging.info("Skip this plot because there is no data!")
         return
 
-    axes[0].set_title("Overview from %s to %s" % (
-        start.to_pydatetime(), end.to_pydatetime()))
+    axes[0].set_title(
+        f"Overview from {start.to_pydatetime()} to {end.to_pydatetime()}"
+    )
     axes[-1].set_xlabel("Time")
     axes[-1].set_xlim([
         pd.Timestamp(start),
@@ -292,11 +297,11 @@ def plot_overview(datasets, config, start, end, ):
     fig.tight_layout()
 
     # Save the generated plot:
-    filename = datasets["plots"].generate_filename(
+    filename = filesets["plots"].get_filename(
         (start, end), fill={"plot": "overview"}
     )
     logging.info("Save plot to %s" % filename)
-    datasets["plots"].write(fig, filename, in_background=True)
+    filesets["plots"].write(fig, filename, in_background=True)
 
 
 def plot_four_statistics(axes, data, config, instrument, add_labels=False):
@@ -310,10 +315,7 @@ def plot_four_statistics(axes, data, config, instrument, add_labels=False):
             ax.set_ylabel(var.attrs["units"])
 
         ax.scatter(
-            data["time"].data,
-            var,
-            s=point_size,
-            label=instrument,
+            data["time"].data, var, s=point_size, label=instrument,
         )
 
 
@@ -342,11 +344,11 @@ def _prepare_parameters(data):
     return data
 
 
-def plot_comparison(datasets, config, start, end, ptype):
+def plot_comparison(filesets, config, start, end, ptype):
     """Plot comparison plots.
 
     Args:
-        datasets: A DatasetManager object.
+        filesets: A DatasetManager object.
         config: A dictionary-like object with configuration keys.
         start: Start time as string.
         end: End time as string.
@@ -367,13 +369,13 @@ def plot_comparison(datasets, config, start, end, ptype):
     for instrument in instruments:
         try:
             data = sample(
-                datasets[instrument+"-stats"], config, start, end
+                filesets[instrument+"-stats"], config, start, end
             )
             data = _prepare_parameters(data)
 
             plot_four_statistics(axes, data, config, instrument)
             no_data = False
-        except cloud.NoFilesError as err:
+        except NoFilesError as err:
             logging.warning(str(err))
         except Exception as err:
             logging.error("Could not create %s plot:" % instrument,
@@ -403,17 +405,17 @@ def plot_comparison(datasets, config, start, end, ptype):
     fig.legend(handles, labels, 'upper left')
 
     # Save the generated plot:
-    filename = datasets["plots"].generate_filename(
+    filename = filesets["plots"].get_filename(
         (start, end), fill={"plot": "comparison"}
     )
     logging.info("Save plot to %s" % filename)
-    datasets["plots"].write(fig, filename)
+    filesets["plots"].write(fig, filename)
 
 
 def get_cmd_line_parser():
     description = """Create plots for all instruments.\n
 
-    This script can create plots of all datasets that are available, i.e.:
+    This script can create plots of all filesets that are available, i.e.:
         - Ceilometer
         - DShip atmosphere variables
         - Dumbo instrument
@@ -455,7 +457,7 @@ Examples:
     parser.add_argument(
         '-o', '--overview', action='store_true',
         help='An overview plot will be created that presents all data '
-             'from all instruments and datasets available. Saves the plots '
+             'from all instruments and filesets available. Saves the plots '
              'in the path that is set by [Plots][overview] config option.'
     )
     parser.add_argument(
@@ -473,11 +475,11 @@ Examples:
     return parser
 
 
-def make_plots(datasets, config, args, start, end):
+def make_plots(filesets, config, args, start, end):
     """Call the plotting functions for the plots requested by *args*.
 
     Args:
-        datasets: A DatasetManager object.
+        filesets: A DatasetManager object.
         config: A dictionary-like object with configuration keys.
         args: An argparse object.
         start: Start time as string.
@@ -487,25 +489,25 @@ def make_plots(datasets, config, args, start, end):
 
     """
     if args.overview:
-        plot_overview(datasets, config,
+        plot_overview(filesets, config,
                       pd.Timestamp(start),
                       pd.Timestamp(end), )
 
     if args.comparison:
-        plot_comparison(datasets, config,
+        plot_comparison(filesets, config,
                         pd.Timestamp(start),
                         pd.Timestamp(end), "comparison")
 
     if args.anomaly:
-        plot_comparison(datasets, config,
+        plot_comparison(filesets, config,
                         pd.Timestamp(start),
                         pd.Timestamp(end), "anomaly")
 
 
 def main():
     # Parse all command line arguments and load the config file and the
-    # datasets:
-    config, args, datasets = cloud.init_toolbox(
+    # filesets:
+    config, args, filesets = cloud.init_toolbox(
         get_cmd_line_parser()
     )
 
@@ -513,10 +515,10 @@ def main():
         for period in pd.period_range(
                 args.start, args.end, freq=args.frequency):
 
-            make_plots(datasets, config, args,
+            make_plots(filesets, config, args,
                        period.start_time, period.end_time, )
     else:
-        make_plots(datasets, config, args, args.start, args.end, )
+        make_plots(filesets, config, args, args.start, args.end, )
 
 
 if __name__ == '__main__':

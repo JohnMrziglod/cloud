@@ -1,5 +1,5 @@
 import pandas as pd
-from typhon.spareice.handlers import CSV, expects_file_info
+from typhon.files import CSV, expects_file_info
 
 __all__ = [
     "ShipMSM",
@@ -14,17 +14,7 @@ class ShipMSM(CSV):
 
     def __init__(self):
         # Call the base class initializer
-        super(ShipMSM, self).__init__(
-            read_csv={
-                "delimiter": "\t",
-                # This should be the column where the date time string is,
-                # in this case 0:
-                "parse_dates": {"time": [0]},
-                "index_col": 0,
-                # "header": 1,
-            },
-            return_type="xarray",
-        )
+        super(ShipMSM, self).__init__()
 
     @expects_file_info()
     def read(self, filename, fields=None, **read_csv):
@@ -39,12 +29,22 @@ class ShipMSM(CSV):
                 https://pandas.pydata.org/pandas-docs/stable/generated/pandas.read_csv.html
 
         Returns:
-            An GroupedArrays object.
+            A xarray.Dataset object.
         """
-        data = super(ShipMSM, self).read(filename, fields)
+        read_csv = {
+           "delimiter": "\t",
+           # This should be the column where the date time string is,
+           # in this case 0:
+           "parse_dates": {"time": [0]},
+           "index_col": 0,
+           # "header": 1,
+        }
+
+        # Call the reading routine from the base class
+        data = super(ShipMSM, self).read(filename, **read_csv)
 
         # Probably, these field names will change for each ship. So, look at
-        # one CSV file and try to find those fields to rename them here:
+        # one CSV file and try to find those fields to rename them:
         data.rename({
             "Weatherstation.PDWDA.Air_pressure": "air_pressure",
             "Weatherstation.PDWDA.Air_temperature": "air_temperature",
@@ -54,8 +54,11 @@ class ShipMSM(CSV):
 
         # Filter out error values. The error values might be different for each
         # ship. Adjust these lines then:
-        data = data.sel(
+        data = data.isel(
             time=(data.air_temperature < 99) & (data.air_pressure > 500))
+
+        if fields is not None:
+            data = data[fields]
 
         return data.sortby("time")
 
@@ -69,15 +72,9 @@ class ShipPS(CSV):
 
     def __init__(self):
         # Call the base class initializer
-        super(ShipPS, self).__init__(
-            read_csv={
-                "delimiter": "\t",
-                # "header": 1,
-            },
-            return_type="xarray",
-        )
+        super(ShipPS, self).__init__()
 
-    expects_file_info
+    @expects_file_info()
     def read(self, filename, fields=None, **read_csv):
         """Read a file in CSV format coming from DShip of RV Polarstern.
 
@@ -92,7 +89,12 @@ class ShipPS(CSV):
         Returns:
             An GroupedArrays object.
         """
-        data = super(ShipPS, self).read(filename, fields)
+        read_csv = {
+            "delimiter": "\t",
+            # "header": 1,
+        }
+
+        data = super(ShipPS, self).read(filename, fields, **read_csv)
 
         # Probably, these field names will change for each ship. So, look at
         # one CSV file and try to find those fields to rename them here:

@@ -11,7 +11,7 @@ Simply clone this branch to your local computer by using this command:
 Additionally, you will need the typhon package (a python module for atmospheric
 physics):
 
-    git clone ttps://github.com/atmtools/typhon.git
+    git clone https://github.com/atmtools/typhon.git
     cd typhon
     pip install --user --editable .
     

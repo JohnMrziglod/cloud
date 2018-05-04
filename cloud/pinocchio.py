@@ -1,13 +1,11 @@
 import datetime
 
-from typhon.spareice import Array, FileHandler, FileInfo
-from typhon.spareice.handlers import expects_file_info
+from typhon.files import expects_file_info, FileHandler, FileInfo
 import numpy as np
 import PIL.Image
 from PIL.ExifTags import TAGS
 from scipy.optimize import curve_fit
-
-from cloud import Movie, ThermalCamMovie
+import xarray as xr
 
 __all__ = [
     "ThermalCam",
@@ -136,20 +134,14 @@ class ThermalCam(FileHandler):
             data = np.flipud(data)
             data = brightness_to_temperature(
                 data, self.calibration_coefficients)
-
-            movie = ThermalCamMovie()
-            movie["images"] = Array(
-                [data], dims=["time", "height", "width"]
-            )
-            movie["time"] = [time]
         else:
             data = np.float32(np.array(image.convert('RGB')))
-            movie = Movie()
-            movie["images"] = Array(
-                [data],
-                dims=["time", "height", "width"]
-            )
-            movie["time"] = [file.times[0]]
+
+        movie = xr.Dataset()
+        movie["images"] = xr.DataArray(
+            [data], dims=["time", "height", "width"]
+        )
+        movie["time"] = "time", [time]
 
         return movie
 

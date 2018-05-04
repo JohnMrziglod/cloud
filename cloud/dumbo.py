@@ -2,10 +2,8 @@ from datetime import datetime
 import logging
 
 import pandas as pd
-from typhon.spareice import Array, FileHandler, FileInfo
-from typhon.spareice.handlers import expects_file_info
-
-from cloud import ThermalCamMovie
+from typhon.files import expects_file_info, FileHandler, FileInfo
+import xarray as xr
 
 __all__ = [
     "ThermalCamASCII",
@@ -72,10 +70,11 @@ class ThermalCamASCII(FileHandler):
         )
 
         timestamp = self._get_timestamp(filename)
-        movie = ThermalCamMovie()
+
+        movie = xr.Dataset()
 
         # We skip the first column since it only contains the row number.
-        movie["images"] = Array(
+        movie["images"] = xr.DataArray(
             [dataframe.as_matrix()], dims=["time", "height", "width"]
         )
         movie["time"] = [timestamp]

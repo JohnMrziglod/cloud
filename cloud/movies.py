@@ -9,7 +9,8 @@ from collections import defaultdict
 import warnings
 
 import numpy as np
-from typhon.spareice.array import Array, GroupedArrays
+import pandas as pd
+import xarray as xr
 
 
 __all__ = [
@@ -18,23 +19,26 @@ __all__ = [
 ]
 
 
-class Movie(GroupedArrays):
+class Movie:
     """A movie is a sequence of images and their timestamps.
     """
+    def __init__(self, data):
+        self.data = data
 
     def apply_mask(self, mask):
         """ Applies a mask on this movie.
 
         Args:
             mask: A numpy.array of boolean values. Where this mask
-                is false the pixels of the image will be covered.
+                is false the pixels of the image will be covered (i.e. replaced
+                with NaN).
 
         Returns:
             None
         """
 
-        # self = np.ma.masked_where(~mask, self)
-        self["images"][:, ~mask] = np.nan
+        mask = xr.DataArray(mask, dims=("height", "width"))
+        self.data["images"] = self.data["images"].where(mask)
 
     @staticmethod
     def count_edges(array):
@@ -72,8 +76,18 @@ class Movie(GroupedArrays):
             return image[:-1, :] + image[1:, :] == 0
 
     @property
+    def time_coverage(self):
+        """Get the start and end timestamp of this movie
+
+        Returns:
+            A tuple of two pandas.Timestamp objects.
+        """
+        return pd.Timestamp(self.data.time.min().item(0)), \
+            pd.Timestamp(self.data.time.max().item(0))
+
+    @property
     def height(self):
-        return self["images"].shape[1]
+        return self.data["images"].shape[1]
 
     # def to_gray_scale(self):
     #     """ Converts this image to gray scale.
@@ -96,7 +110,7 @@ class Movie(GroupedArrays):
     #        None
     #     """
     #
-    #     if len(self["images"].shape) == 4:
+    #     if len(self.data["images"].shape) == 4:
     #         self = 255. * (np.nansum(self, 2) / (3*255.))
 
     # def show(self):
@@ -105,7 +119,7 @@ class Movie(GroupedArrays):
 
     @property
     def width(self):
-        return self["images"].shape[0]
+        return self.data["images"].shape[0]
 
 
 class ThermalCamMovie(Movie):
@@ -131,7 +145,7 @@ class ThermalCamMovie(Movie):
             ~np.isnan(self.clouds), axis=(1, 2,))
 
         all_pixels = np.count_nonzero(
-            ~np.isnan(self["images"]), axis=(1, 2,))
+            ~np.isnan(self.data["images"]), axis=(1, 2,))
 
         return all_cloud_pixels / all_pixels
 
@@ -256,7 +270,7 @@ class ThermalCamMovie(Movie):
         return level_mask
 
     def find_clouds(self, min_temperature, max_temperature=None):
-        """Find all clouds in this movie by using temperature thresholds.
+        """Find all clouds in this movie by using temperature thresholds
 
         Args:
             min_temperature: Temperature of the clear sky that will be
@@ -270,23 +284,22 @@ class ThermalCamMovie(Movie):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            min_temperature.shape = (min_temperature.shape[0], 1, 1)
+            min_temperature = xr.DataArray(
+                min_temperature, dims="time"
+            )
 
             if max_temperature is None:
-                cloud_mask = self["images"] > min_temperature
-                self.clouds = self["images"].copy()
-                self.clouds[~cloud_mask] = np.nan
-                return self.clouds
-
-            # Otherwise broadcasting fails
-            max_temperature.shape = (max_temperature.shape[0], 1, 1)
-
-            cloud_mask = (self["images"] > min_temperature) & \
-                   (self["images"] < max_temperature)
+                cloud_mask = self.data["images"] > min_temperature
+            else:
+                max_temperature = xr.DataArray(
+                    max_temperature, dims="time"
+                )
+                cloud_mask = \
+                    (self.data["images"] > min_temperature) & \
+                    (self.data["images"] < max_temperature)
 
             # Save the cloud pixels
-            self.clouds = self["images"].copy()
-            self.clouds[~cloud_mask] = np.nan
+            self.clouds = self.data["images"].where(cloud_mask)
 
             return self.clouds
 
@@ -296,13 +309,12 @@ class ThermalCamMovie(Movie):
         Args:
             temperatures: Temperature of the clear sky that will be
                 used as threshold to decide between cloud and non-cloud. Should
-                be a interpolation function (i.e. a
-                scipy.interpolate.interp1d).
+                be a interpolation function (eg. a scipy.interpolate.interp1d).
             levels: A list of different temperature thresholds
 
         Returns:
-            An GroupedArrays (kind of a dictionary of numpy arrays) with the
-            values for the different parameters (coverage, inhomogeneity, etc.)
+            A xarray.Dataset with the values for the different parameters
+            (coverage, inhomogeneity, etc.)
         """
 
         parameters = {
@@ -341,13 +353,13 @@ class ThermalCamMovie(Movie):
             # We need a cloud mask before calculating the cloud statistics.
             if level == 0:
                 self.find_clouds(
-                    temperatures(self["time"]) + decrement,
+                    temperatures(self.data["time"]) + decrement,
                     None,
                 )
             else:
                 self.find_clouds(
-                    temperatures(self["time"]) + decrement,
-                    temperatures(self["time"]) + levels[level-1],
+                    temperatures(self.data["time"]) + decrement,
+                    temperatures(self.data["time"]) + levels[level-1],
                 )
 
             # Calculate the cloud parameters (we ignore warnings because when
@@ -357,12 +369,11 @@ class ThermalCamMovie(Movie):
                 for parameter, func in parameters.items():
                     results[parameter].append(func[0]())
 
-        # Create an GroupedArrays with all parameters:
-        cloud_stats = GroupedArrays()
-        cloud_stats["time"] = self["time"]
-        cloud_stats["time"].dims = ["time"]
+        # Create an xarray Dataset with all parameters:
+        cloud_stats = xr.Dataset()
+        cloud_stats["time"] = self.data["time"]
         for parameter, result in results.items():
-            cloud_stats[parameter] = Array(
+            cloud_stats[parameter] = xr.DataArray(
                 np.column_stack(result),
                 attrs=parameters[parameter][1],
                 dims=["time", "level"],
